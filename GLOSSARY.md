@@ -69,7 +69,7 @@ A digit that has only one possible cell within a unit, which forces a deduction 
 _Avoid_: Unique candidate
 
 **Contradiction**:
-A grid state that cannot lead to a solution: a cell with no candidates, a digit that appears twice in a unit, or a digit with no possible cell left in a unit. A game in contradiction is stuck.
+A grid state that cannot lead to a solution: a cell with no candidates, a digit that appears twice in a unit, or a digit with no possible cell left in a unit. A game in contradiction accepts no further moves until it goes back to an earlier position.
 _Avoid_: Error, invalid state, conflict
 
 **Step**:
@@ -79,3 +79,17 @@ _Avoid_: Event, change, action
 **Cascade**:
 The chain of eliminations and deductions that one move sets off.
 _Avoid_: Propagation run, chain reaction, ripple
+
+### History
+
+**Move history**:
+The ordered list of moves a game has accepted. Together with the rules, it fully determines the grid; deductions, eliminations and contradictions are never recorded, only recomputed.
+_Avoid_: Event log, event stream, command log, undo stack
+
+**Position**:
+How many moves from the start of the move history currently apply to the grid. Position 0 is the empty grid. Moves after the position are kept until the player makes a new move, which discards them.
+_Avoid_: Cursor, index, version
+
+**Replay**:
+Rebuilding the grid from the start of the move history up to a chosen position, which then becomes the game's position. Replaying to an earlier position is how a player goes back, and to a later one how they go forward again.
+_Avoid_: Rewind, undo, redo, jump, revert
