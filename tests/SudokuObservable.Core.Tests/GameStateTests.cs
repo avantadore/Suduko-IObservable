@@ -22,8 +22,7 @@ public class GameStateTests
         Assert.IsType<MoveOutcome.Accepted>(outcome);
         Assert.Equal(9, game.Cell(5, 9).Digit);
         Assert.Equal(GameState.Contradicted, game.State);
-        var contradiction = Assert.Single(steps.OfType<Step.Contradiction>());
-        Assert.Contains("(9, 9)", contradiction.Reason);
+        Assert.Equal(new Step.Contradiction.NoCandidateForCell(9, 9), Assert.Single(steps.OfType<Step.Contradiction>()));
         Assert.Empty(game.Cell(9, 9).Candidates);
         Assert.False(ended());
     }
@@ -45,9 +44,32 @@ public class GameStateTests
         Assert.IsType<MoveOutcome.Accepted>(outcome);
         Assert.Equal(9, game.Cell(2, 7).Digit);
         Assert.Equal(GameState.Contradicted, game.State);
-        var contradiction = Assert.Single(steps.OfType<Step.Contradiction>());
-        Assert.Contains("row 1", contradiction.Reason);
+        Assert.Equal(
+            new Step.Contradiction.NoCellForDigit(UnitKind.Row, 1, 9),
+            Assert.Single(steps.OfType<Step.Contradiction>()));
         Assert.False(ended());
+    }
+
+    [Fact]
+    public void A_digit_left_with_no_cell_in_a_box_names_the_box_by_its_number_row_by_row()
+    {
+        var game = Game.New();
+        // Box 4 (rows 4–6, columns 1–3) holds 1, 3, 7 and 9, and 8 in (1,2) rules out its column 2, so 8 can
+        // only go in (4,1) or (6,1).
+        game.Move(5, 3, 1);
+        game.Move(5, 1, 7);
+        game.Move(6, 3, 9);
+        game.Move(4, 3, 3);
+        game.Move(1, 2, 8);
+
+        var steps = Record(game, out _);
+
+        game.Move(9, 1, 8); // column 1 still has room for 8, but box 4 has none
+
+        Assert.Equal(GameState.Contradicted, game.State);
+        Assert.Equal(
+            new Step.Contradiction.NoCellForDigit(UnitKind.Box, 4, 8),
+            Assert.Single(steps.OfType<Step.Contradiction>()));
     }
 
     [Fact]

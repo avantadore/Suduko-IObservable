@@ -7,13 +7,15 @@ namespace SudokuObservable.Core;
 /// </summary>
 internal sealed class ReactiveUnit
 {
-    private readonly string _name;
+    private readonly UnitKind _kind;
+    private readonly int _number;
     private readonly IReadOnlyList<ReactiveCell> _cells;
     private readonly StepStream _steps;
 
-    public ReactiveUnit(string name, IReadOnlyList<ReactiveCell> cells, StepStream steps)
+    public ReactiveUnit(UnitKind kind, int number, IReadOnlyList<ReactiveCell> cells, StepStream steps)
     {
-        _name = name;
+        _kind = kind;
+        _number = number;
         _cells = cells;
         _steps = steps;
         foreach (var cell in cells)
@@ -28,7 +30,7 @@ internal sealed class ReactiveUnit
         switch (_cells.Where(cell => cell.HasCandidate(digit)).Take(2).ToList())
         {
             case []:
-                _steps.Contradict($"{digit} has no possible cell left in {_name}.");
+                _steps.Contradict(new Step.Contradiction.NoCellForDigit(_kind, _number, digit));
                 break;
             case [{ Digit: null } only]:
                 only.Deduce(digit);
