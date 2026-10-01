@@ -8,7 +8,7 @@ namespace SudokuObservable.Core;
 /// The live state of one cell. Its placements are observable, so its peers can subscribe and eliminate, and so
 /// are the candidates it loses, so its units can look for hidden singles.
 /// </summary>
-internal sealed class ReactiveCell(int row, int column, StepLog log)
+internal sealed class ReactiveCell(int row, int column, StepStream steps)
 {
     private readonly SortedSet<int> _candidates = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     private readonly Subject<int> _placements = new();
@@ -42,7 +42,7 @@ internal sealed class ReactiveCell(int row, int column, StepLog log)
         Digit = digit;
         Source = source;
         _candidates.IntersectWith([digit]);
-        log.Record(new Step.Placement(Row, Column, digit, source));
+        steps.Publish(new Step.Placement(Row, Column, digit, source));
         _placements.OnNext(digit);
         lost.ForEach(_lostCandidates.OnNext);
     }
@@ -51,7 +51,7 @@ internal sealed class ReactiveCell(int row, int column, StepLog log)
     {
         if (_candidates.Remove(digit))
         {
-            log.Record(new Step.Elimination(Row, Column, digit));
+            steps.Publish(new Step.Elimination(Row, Column, digit));
 
             if (Digit is null && _candidates.Count == 1)
             {
@@ -59,7 +59,7 @@ internal sealed class ReactiveCell(int row, int column, StepLog log)
             }
             else if (Digit is null && _candidates.Count == 0)
             {
-                log.Contradict($"Cell ({Row}, {Column}) has no candidates left.");
+                steps.Contradict($"Cell ({Row}, {Column}) has no candidates left.");
             }
 
             _lostCandidates.OnNext(digit);
@@ -76,7 +76,7 @@ internal sealed class ReactiveCell(int row, int column, StepLog log)
     // contradiction, after which nothing more is deduced.
     private void PlaceDeduction(int digit)
     {
-        if (!log.IsContradicted && Digit is null && HasCandidate(digit))
+        if (!steps.IsContradicted && Digit is null && HasCandidate(digit))
         {
             Place(digit, PlacementSource.Deduction);
         }

@@ -9,13 +9,13 @@ internal sealed class ReactiveUnit
 {
     private readonly string _name;
     private readonly IReadOnlyList<ReactiveCell> _cells;
-    private readonly StepLog _log;
+    private readonly StepStream _steps;
 
-    public ReactiveUnit(string name, IReadOnlyList<ReactiveCell> cells, StepLog log)
+    public ReactiveUnit(string name, IReadOnlyList<ReactiveCell> cells, StepStream steps)
     {
         _name = name;
         _cells = cells;
-        _log = log;
+        _steps = steps;
         foreach (var cell in cells)
         {
             cell.LostCandidates.Subscribe(OnCandidateLost);
@@ -28,7 +28,7 @@ internal sealed class ReactiveUnit
         switch (_cells.Where(cell => cell.HasCandidate(digit)).Take(2).ToList())
         {
             case []:
-                _log.Contradict($"{digit} has no possible cell left in {_name}.");
+                _steps.Contradict($"{digit} has no possible cell left in {_name}.");
                 break;
             case [{ Digit: null } only]:
                 only.Deduce(digit);

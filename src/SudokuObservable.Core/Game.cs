@@ -6,7 +6,7 @@ namespace SudokuObservable.Core;
 /// <summary>A session in which one 9×9 grid is filled in. Every game starts with all 81 cells empty.</summary>
 public sealed class Game
 {
-    private readonly StepLog _log = new();
+    private readonly StepStream _steps = new();
     private readonly ReactiveCell[,] _cells = new ReactiveCell[9, 9];
 
     private Game()
@@ -15,7 +15,7 @@ public sealed class Game
         {
             for (var column = 1; column <= 9; column++)
             {
-                _cells[row - 1, column - 1] = new ReactiveCell(row, column, _log);
+                _cells[row - 1, column - 1] = new ReactiveCell(row, column, _steps);
             }
         }
 
@@ -37,14 +37,14 @@ public sealed class Game
             .Concat(cells.GroupBy(cell => $"box {cell.BoxIndex + 1}"));
         foreach (var unit in units)
         {
-            _ = new ReactiveUnit(unit.Key, [.. unit], _log);
+            _ = new ReactiveUnit(unit.Key, [.. unit], _steps);
         }
     }
 
     public static Game New() => new();
 
     public GameState State =>
-        _log.IsContradicted ? GameState.Contradicted
+        _steps.IsContradicted ? GameState.Contradicted
         : _cells.Cast<ReactiveCell>().All(cell => cell.Digit is not null) ? GameState.Solved
         : GameState.InProgress;
 
@@ -53,7 +53,7 @@ public sealed class Game
     /// step too, so the stream never errors or completes. It is not necessarily the last step of its move: the
     /// eliminations of the placement that reached it still follow, but no further deductions do.
     /// </summary>
-    public IObservable<Step> Steps => _log.Steps;
+    public IObservable<Step> Steps => _steps.Steps;
 
     /// <summary>All 81 cells, row by row.</summary>
     public IEnumerable<Cell> Cells => _cells.Cast<ReactiveCell>().Select(cell => cell.Snapshot());
@@ -74,7 +74,7 @@ public sealed class Game
             throw new InvalidOperationException("A move cannot be made while another move's cascade is running.");
         }
 
-        if (_log.IsContradicted)
+        if (_steps.IsContradicted)
         {
             return new MoveOutcome.Rejected(
                 "The game is in contradiction, so no more moves can be made. Start a new game.");
