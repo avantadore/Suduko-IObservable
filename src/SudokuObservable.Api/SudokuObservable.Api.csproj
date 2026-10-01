@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SudokuObservable.Core\SudokuObservable.Core.csproj" />
+    <ProjectReference Include="..\SudokuObservable.ServiceDefaults\SudokuObservable.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>

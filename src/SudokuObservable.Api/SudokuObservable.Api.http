@@ -1,0 +1,6 @@
+@SudokuObservable.Api_HostAddress = http://localhost:5224
+
+GET {{SudokuObservable.Api_HostAddress}}/openapi/v1.json
+Accept: application/json
+
+###

@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "SudokuObservable.AppHost.csproj"
+  }
+}

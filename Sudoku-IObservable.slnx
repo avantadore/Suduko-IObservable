@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SudokuObservable.Api/SudokuObservable.Api.csproj" />
+    <Project Path="src/SudokuObservable.AppHost/SudokuObservable.AppHost.csproj" />
+    <Project Path="src/SudokuObservable.Core/SudokuObservable.Core.csproj" />
+    <Project Path="src/SudokuObservable.ServiceDefaults/SudokuObservable.ServiceDefaults.csproj" />
+    <Project Path="src/SudokuObservable.Web/SudokuObservable.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SudokuObservable.Core.Tests/SudokuObservable.Core.Tests.csproj" />
+  </Folder>
+</Solution>

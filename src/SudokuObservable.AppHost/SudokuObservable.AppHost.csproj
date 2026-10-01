@@ -1,0 +1,14 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.0">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>82fc24af-6148-45c6-8893-994171d7b165</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SudokuObservable.Api\SudokuObservable.Api.csproj" />
+    <ProjectReference Include="..\SudokuObservable.Web\SudokuObservable.Web.csproj" />
+  </ItemGroup>
+
+</Project>
