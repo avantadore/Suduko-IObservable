@@ -45,3 +45,30 @@
     text-align: center;
     line-height: 1.1rem;
 }
+
+.cell.empty {
+    cursor: pointer;
+}
+
+.cell.empty:hover {
+    background: #f2f6fc;
+}
+
+.cell.selected {
+    background: #dde8f8;
+}
+
+.picker button {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1a4f9c;
+    cursor: pointer;
+}
+
+.picker button:hover {
+    background: #1a4f9c;
+    color: white;
+}
