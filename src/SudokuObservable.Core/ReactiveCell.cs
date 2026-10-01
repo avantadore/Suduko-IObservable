@@ -38,13 +38,13 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
 
     public void Place(int digit, PlacementSource source)
     {
-        var others = _candidates.Where(candidate => candidate != digit).ToList();
+        var lost = _candidates.Where(candidate => candidate != digit).ToList();
         Digit = digit;
         Source = source;
         _candidates.IntersectWith([digit]);
         steps.OnNext(new Step.Placement(Row, Column, digit, source));
         _placements.OnNext(digit);
-        others.ForEach(_lostCandidates.OnNext);
+        lost.ForEach(_lostCandidates.OnNext);
     }
 
     public void Eliminate(int digit)
@@ -55,19 +55,21 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
 
             if (Digit is null && _candidates.Count == 1)
             {
-                // A naked single. Like every deduction it is queued on the trampoline rather than placed now,
-                // so the placement that forced it finishes its eliminations first and the cascade unfolds
-                // breadth-first.
-                var single = _candidates.Min;
-                Scheduler.CurrentThread.Schedule(() => PlaceDeduction(single));
+                Deduce(_candidates.Min); // a naked single
             }
 
             _lostCandidates.OnNext(digit);
         }
     }
 
-    /// <summary>Places a deduction that was queued earlier, unless the cascade has since filled the cell or removed the digit.</summary>
-    public void PlaceDeduction(int digit)
+    /// <summary>
+    /// Deduces <paramref name="digit"/> for this cell. The placement is queued on the trampoline rather than made
+    /// now, so the placement that forced it finishes its eliminations first and the cascade unfolds breadth-first.
+    /// </summary>
+    public void Deduce(int digit) => Scheduler.CurrentThread.Schedule(() => PlaceDeduction(digit));
+
+    // By the time a queued deduction runs, the cascade may have filled the cell or removed the digit.
+    private void PlaceDeduction(int digit)
     {
         if (Digit is null && HasCandidate(digit))
         {

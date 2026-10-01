@@ -1,5 +1,3 @@
-using System.Reactive.Concurrency;
-
 namespace SudokuObservable.Core;
 
 /// <summary>
@@ -24,7 +22,7 @@ internal sealed class ReactiveUnit
         // A filled cell keeps its digit as its candidate, so a unit that already holds the digit has a holder.
         if (_cells.Where(cell => cell.HasCandidate(digit)).Take(2).ToList() is [{ Digit: null } only])
         {
-            Scheduler.CurrentThread.Schedule(() => only.PlaceDeduction(digit));
+            only.Deduce(digit);
         }
     }
 }

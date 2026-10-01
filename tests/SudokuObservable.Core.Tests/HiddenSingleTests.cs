@@ -54,6 +54,23 @@ public class HiddenSingleTests
     }
 
     [Fact]
+    public void Filling_a_cell_with_another_digit_can_leave_a_hidden_single()
+    {
+        var game = Game.New();
+        for (var digit = 2; digit <= 6; digit++)
+        {
+            game.Move(1, digit - 1, digit);
+        }
+
+        game.Move(4, 7, 1); // 1 leaves (1,7)
+        game.Move(7, 8, 1); // 1 leaves (1,8): in row 1, 1 can go in (1,6) or (1,9)
+
+        game.Move(1, 6, 7); // filling (1,6) with 7 leaves (1,9) as the only cell for 1 in row 1
+
+        Assert.Equal((1, PlacementSource.Deduction), DigitAndSource(game.Cell(1, 9)));
+    }
+
+    [Fact]
     public void Hidden_and_naked_singles_chain_within_one_cascade_in_cascade_order()
     {
         var game = Game.New();
