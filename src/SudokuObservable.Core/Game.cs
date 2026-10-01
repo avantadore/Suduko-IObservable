@@ -50,7 +50,8 @@ public sealed class Game
 
     /// <summary>
     /// Everything that happens to the grid: each move, followed by the steps of its cascade. A contradiction is a
-    /// step too, so the stream never errors or completes.
+    /// step too, so the stream never errors or completes. It is not necessarily the last step of its move: the
+    /// eliminations of the placement that reached it still follow, but no further deductions do.
     /// </summary>
     public IObservable<Step> Steps => _log.Steps;
 

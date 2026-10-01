@@ -48,7 +48,8 @@
     {
         "Solved" => "Solved!",
         "Contradicted" => "Contradicted: this grid can no longer be solved. Start a new game.",
-        _ => "In progress",
+        "InProgress" => "In progress",
+        _ => state,
     };
 
     private async Task Call(string failure, Func<Task> call)

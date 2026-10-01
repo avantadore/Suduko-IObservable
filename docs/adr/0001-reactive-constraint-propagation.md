@@ -13,3 +13,4 @@ A move is accepted as long as its digit is a candidate for the cell, even if its
 
 - Until undo exists, a game in contradiction cannot be recovered, and the player has to start a new game.
 - Placements are final. Undo will come from event sourcing over the steps, recorded with who made each placement (move or deduction), not from reversing eliminations in place.
+- Moves and deductions are only placed when the digit is still a candidate, and peers eliminate a placed digit before any queued deduction runs, so a digit is never actually placed twice in a unit. That form of contradiction surfaces instead as a cell with no candidates, or as a digit with no possible cell left in a unit.
