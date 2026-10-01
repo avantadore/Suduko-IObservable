@@ -1,5 +1,48 @@
 @page "/"
+@inject SudokuApi Api
 
 <PageTitle>Sudoku</PageTitle>
 
 <h1>Sudoku</h1>
+
+<div class="toolbar">
+    <button type="button" @onclick="NewGame" disabled="@_loading">New game</button>
+    @if (_grid is not null)
+    {
+        <span class="state">@_grid.State</span>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <p class="error" role="alert">@_error</p>
+}
+
+@if (_grid is not null)
+{
+    <Board Grid="_grid" />
+}
+
+@code {
+    private Grid? _grid;
+    private string? _error;
+    private bool _loading;
+
+    private async Task NewGame()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _grid = await Api.NewGameAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            _error = $"Could not start a new game: {exception.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
