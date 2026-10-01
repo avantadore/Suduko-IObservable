@@ -1,3 +1,4 @@
+using SudokuObservable.Web;
 using SudokuObservable.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // "https+http://api" is resolved by Aspire service discovery to the Api project.
-builder.Services.AddHttpClient("api", client => client.BaseAddress = new Uri("https+http://api"));
+builder.Services.AddHttpClient<SudokuApi>(client => client.BaseAddress = new Uri("https+http://api"));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

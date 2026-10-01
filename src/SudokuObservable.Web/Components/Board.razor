@@ -1,0 +1,31 @@
+<div class="board" role="grid" aria-label="Sudoku grid">
+    @foreach (var cell in Grid.Cells)
+    {
+        <div class="@CellClass(cell)" role="gridcell" aria-label="Row @cell.Row, column @cell.Column">
+            @if (cell.Digit is { } digit)
+            {
+                <span class="digit">@digit</span>
+            }
+            else
+            {
+                <div class="candidates">
+                    @for (var candidate = 1; candidate <= 9; candidate++)
+                    {
+                        <span>@(cell.Candidates.Contains(candidate) ? candidate : null)</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required Grid Grid { get; set; }
+
+    // Thick lines are drawn on the right and bottom of every third column and row, around the boxes.
+    private static string CellClass(GridCell cell) =>
+        "cell"
+        + (cell.Column % 3 == 0 && cell.Column < 9 ? " box-right" : "")
+        + (cell.Row % 3 == 0 && cell.Row < 9 ? " box-bottom" : "");
+}
