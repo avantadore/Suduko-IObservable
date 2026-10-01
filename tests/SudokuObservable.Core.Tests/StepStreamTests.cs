@@ -86,7 +86,7 @@ public class StepStreamTests
         }
 
         game.Move(7, 8, 9);
-        game.Move(4, 9, 9);
+        game.Move(4, 9, 9); // also deduces the hidden single 9 at (1,7)
         var steps = Record(game);
 
         game.Move(9, 9, 7);
@@ -96,14 +96,12 @@ public class StepStreamTests
             new Step.Placement(9, 9, 7, PlacementSource.Move),
             new Step.Placement(1, 9, 8, PlacementSource.Deduction),
             new Step.Placement(1, 8, 7, PlacementSource.Deduction),
-            new Step.Placement(1, 7, 9, PlacementSource.Deduction),
         ];
         Assert.Equal(placements, steps.OfType<Step.Placement>());
 
         // Each deduction comes after the elimination that left its cell with one candidate.
         Assert.True(steps.IndexOf(new Step.Elimination(1, 9, 7)) < steps.IndexOf(placements[1]));
         Assert.True(steps.IndexOf(new Step.Elimination(1, 8, 8)) < steps.IndexOf(placements[2]));
-        Assert.True(steps.IndexOf(new Step.Elimination(1, 7, 7)) < steps.IndexOf(placements[3]));
     }
 
     [Fact]

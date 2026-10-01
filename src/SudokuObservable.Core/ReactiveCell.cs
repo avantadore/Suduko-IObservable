@@ -4,17 +4,22 @@ using System.Reactive.Subjects;
 
 namespace SudokuObservable.Core;
 
-/// <summary>The live state of one cell. Its placements are observable, so its peers can subscribe and eliminate.</summary>
+/// <summary>
+/// The live state of one cell. Its placements are observable, so its peers can subscribe and eliminate, and so
+/// are the candidates it loses, so its units can look for hidden singles.
+/// </summary>
 internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
 {
     private readonly SortedSet<int> _candidates = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     private readonly Subject<int> _placements = new();
+    private readonly Subject<int> _lostCandidates = new();
 
     public int Row { get; } = row;
 
     public int Column { get; } = column;
 
-    public int Box => (Row - 1) / 3 * 3 + (Column - 1) / 3;
+    /// <summary>The box this cell belongs to, 0–8 row by row.</summary>
+    public int BoxIndex => (Row - 1) / 3 * 3 + (Column - 1) / 3;
 
     public int? Digit { get; private set; }
 
@@ -23,18 +28,23 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
     /// <summary>The digit placed in this cell, emitted once when it is placed.</summary>
     public IObservable<int> Placements => _placements.AsObservable();
 
+    /// <summary>Each candidate this cell loses, by elimination or because the cell was filled.</summary>
+    public IObservable<int> LostCandidates => _lostCandidates.AsObservable();
+
     public bool IsPeerOf(ReactiveCell other) =>
-        other != this && (other.Row == Row || other.Column == Column || other.Box == Box);
+        other != this && (other.Row == Row || other.Column == Column || other.BoxIndex == BoxIndex);
 
     public bool HasCandidate(int digit) => _candidates.Contains(digit);
 
     public void Place(int digit, PlacementSource source)
     {
+        var others = _candidates.Where(candidate => candidate != digit).ToList();
         Digit = digit;
         Source = source;
         _candidates.IntersectWith([digit]);
         steps.OnNext(new Step.Placement(Row, Column, digit, source));
         _placements.OnNext(digit);
+        others.ForEach(_lostCandidates.OnNext);
     }
 
     public void Eliminate(int digit)
@@ -45,18 +55,23 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
 
             if (Digit is null && _candidates.Count == 1)
             {
-                // A naked single. Queued on the trampoline rather than placed now, so the placement that
-                // forced it finishes its eliminations first and the cascade unfolds breadth-first.
-                Scheduler.CurrentThread.Schedule(PlaceNakedSingle);
+                // A naked single. Like every deduction it is queued on the trampoline rather than placed now,
+                // so the placement that forced it finishes its eliminations first and the cascade unfolds
+                // breadth-first.
+                var single = _candidates.Min;
+                Scheduler.CurrentThread.Schedule(() => PlaceDeduction(single));
             }
+
+            _lostCandidates.OnNext(digit);
         }
     }
 
-    private void PlaceNakedSingle()
+    /// <summary>Places a deduction that was queued earlier, unless the cascade has since filled the cell or removed the digit.</summary>
+    public void PlaceDeduction(int digit)
     {
-        if (Digit is null && _candidates.Count == 1)
+        if (Digit is null && HasCandidate(digit))
         {
-            Place(_candidates.Min, PlacementSource.Deduction);
+            Place(digit, PlacementSource.Deduction);
         }
     }
 

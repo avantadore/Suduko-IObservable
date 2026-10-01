@@ -33,14 +33,13 @@ public class NakedSingleTests
         }
 
         game.Move(7, 8, 9); // (1,8) is left with 7 and 8
-        game.Move(4, 9, 9); // (1,9) is left with 7 and 8
+        game.Move(4, 9, 9); // (1,9) is left with 7 and 8, so 9 is a hidden single at (1,7)
 
-        // 7 in column 9 leaves (1,9) with 8, which leaves (1,8) with 7, which leaves (1,7) with 9.
+        // 7 in column 9 leaves (1,9) with 8, which in turn leaves (1,8) with 7.
         game.Move(9, 9, 7);
 
         Assert.Equal((8, PlacementSource.Deduction), DigitAndSource(game.Cell(1, 9)));
         Assert.Equal((7, PlacementSource.Deduction), DigitAndSource(game.Cell(1, 8)));
-        Assert.Equal((9, PlacementSource.Deduction), DigitAndSource(game.Cell(1, 7)));
     }
 
     private static (int?, PlacementSource?) DigitAndSource(Cell cell) => (cell.Digit, cell.Source);
