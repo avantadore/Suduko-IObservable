@@ -72,3 +72,13 @@
     background: #1a4f9c;
     color: white;
 }
+
+/* The player's moves in ink, the game's deductions in a distinct colour. */
+.digit.move {
+    color: #222;
+}
+
+.digit.deduction {
+    color: #2e8b57;
+    font-style: italic;
+}

@@ -1,3 +1,4 @@
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
@@ -41,6 +42,21 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
         if (_candidates.Remove(digit))
         {
             steps.OnNext(new Step.Elimination(Row, Column, digit));
+
+            if (Digit is null && _candidates.Count == 1)
+            {
+                // A naked single. Queued on the trampoline rather than placed now, so the placement that
+                // forced it finishes its eliminations first and the cascade unfolds breadth-first.
+                Scheduler.CurrentThread.Schedule(PlaceNakedSingle);
+            }
+        }
+    }
+
+    private void PlaceNakedSingle()
+    {
+        if (Digit is null && _candidates.Count == 1)
+        {
+            Place(_candidates.Min, PlacementSource.Deduction);
         }
     }
 

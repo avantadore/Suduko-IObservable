@@ -1,3 +1,4 @@
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
@@ -65,7 +66,9 @@ public sealed class Game
             return new MoveOutcome.Rejected($"{digit} is not a candidate for cell ({row}, {column}).");
         }
 
-        cell.Place(digit, PlacementSource.Move);
+        // The move runs on Rx's current-thread trampoline, so every deduction its cascade forces is queued
+        // and placed in order before Schedule returns.
+        Scheduler.CurrentThread.Schedule(() => cell.Place(digit, PlacementSource.Move));
         return new MoveOutcome.Accepted();
     }
 

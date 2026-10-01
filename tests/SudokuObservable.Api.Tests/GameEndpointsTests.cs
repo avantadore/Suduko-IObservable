@@ -108,6 +108,23 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
     }
 
     [Fact]
+    public async Task A_deduced_cell_reports_its_source_as_deduction()
+    {
+        var id = await CreateGame();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            await Move(id, 1, digit, digit);
+        }
+
+        // Leaves (1,9) with a single candidate, which the game places itself.
+        var response = await Move(id, 1, 8, 8);
+
+        var grid = await ReadJson(response);
+        Assert.Equal("Move", CellOf(grid, 1, 8).GetProperty("source").GetString());
+        Assert.Equal("Deduction", CellOf(grid, 1, 9).GetProperty("source").GetString());
+    }
+
+    [Fact]
     public async Task Repeating_a_move_returns_200_with_the_unchanged_grid()
     {
         var id = await CreateGame();
