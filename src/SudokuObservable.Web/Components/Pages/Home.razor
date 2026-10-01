@@ -6,7 +6,7 @@
 <h1>Sudoku</h1>
 
 <div class="toolbar">
-    <button type="button" @onclick="NewGame" disabled="@_loading">New game</button>
+    <button type="button" @onclick="NewGame" disabled="@_busy">New game</button>
     @if (_grid is not null)
     {
         <span class="state">@_grid.State</span>
@@ -20,29 +20,45 @@
 
 @if (_grid is not null)
 {
-    <Board Grid="_grid" />
+    @* Keyed by game, so a new game starts with a fresh board and nothing selected. *@
+    <Board @key="_grid.Id" Grid="_grid" OnPick="Place" />
 }
 
 @code {
     private Grid? _grid;
     private string? _error;
-    private bool _loading;
+    private bool _busy;
 
-    private async Task NewGame()
+    private Task NewGame() => Call("Could not start a new game", async () => _grid = await Api.NewGameAsync());
+
+    private Task Place(Board.Pick pick) => Call("Could not make the move", async () =>
     {
-        _loading = true;
+        switch (await Api.MoveAsync(_grid!.Id, pick.Row, pick.Column, pick.Digit))
+        {
+            case MoveResult.Accepted accepted:
+                _grid = accepted.Grid;
+                break;
+            case MoveResult.Rejected rejected:
+                _error = rejected.Reason;
+                break;
+        }
+    });
+
+    private async Task Call(string failure, Func<Task> call)
+    {
+        _busy = true;
         _error = null;
         try
         {
-            _grid = await Api.NewGameAsync();
+            await call();
         }
         catch (HttpRequestException exception)
         {
-            _error = $"Could not start a new game: {exception.Message}";
+            _error = $"{failure}: {exception.Message}";
         }
         finally
         {
-            _loading = false;
+            _busy = false;
         }
     }
 }

@@ -11,6 +11,7 @@ public static class GameEndpoints
 
         games.MapPost("/", CreateGame);
         games.MapGet("/{id:guid}", GetGame);
+        games.MapPut("/{id:guid}/cells/{row:int}/{column:int}", MakeMove);
         games.MapGet("/{id:guid}/cells/{row:int}/{column:int}/candidates", GetCandidates);
 
         return app;
@@ -23,38 +24,70 @@ public static class GameEndpoints
         return TypedResults.Created($"/games/{id}", GridResponse.From(id, game));
     }
 
-    private static Results<Ok<GridResponse>, NotFound> GetGame(Guid id, GameStore store) =>
-        store.Find(id) is { } game
-            ? TypedResults.Ok(GridResponse.From(id, game))
-            : TypedResults.NotFound();
-
-    private static Results<Ok<IReadOnlyList<int>>, ValidationProblem, NotFound> GetCandidates(
-        Guid id, int row, int column, GameStore store)
+    private static Results<Ok<GridResponse>, NotFound> GetGame(Guid id, GameStore store)
     {
-        var errors = ValidateCoordinates(row, column);
+        if (store.Find(id) is not { } game)
+        {
+            return TypedResults.NotFound();
+        }
+
+        // A game is not thread-safe, so every request that touches one holds its lock.
+        lock (game)
+        {
+            return TypedResults.Ok(GridResponse.From(id, game));
+        }
+    }
+
+    private static Results<Ok<GridResponse>, ProblemHttpResult, ValidationProblem, NotFound> MakeMove(
+        Guid id, int row, int column, MoveRequest move, GameStore store)
+    {
+        var errors = ValidateOneToNine(("Row", row), ("Column", column), ("Digit", move.Digit));
         if (errors.Count > 0)
         {
             return TypedResults.ValidationProblem(errors);
         }
 
-        return store.Find(id) is { } game
-            ? TypedResults.Ok(game.Cell(row, column).Candidates)
-            : TypedResults.NotFound();
+        if (store.Find(id) is not { } game)
+        {
+            return TypedResults.NotFound();
+        }
+
+        lock (game)
+        {
+            return game.Move(row, column, move.Digit) switch
+            {
+                MoveOutcome.Rejected rejected => TypedResults.Problem(
+                    title: "Move rejected", detail: rejected.Reason, statusCode: StatusCodes.Status409Conflict),
+                _ => TypedResults.Ok(GridResponse.From(id, game)),
+            };
+        }
     }
 
-    private static Dictionary<string, string[]> ValidateCoordinates(int row, int column)
+    private static Results<Ok<IReadOnlyList<int>>, ValidationProblem, NotFound> GetCandidates(
+        Guid id, int row, int column, GameStore store)
     {
-        var errors = new Dictionary<string, string[]>();
-        if (row is < 1 or > 9)
+        var errors = ValidateOneToNine(("Row", row), ("Column", column));
+        if (errors.Count > 0)
         {
-            errors[nameof(row)] = ["Row must be between 1 and 9."];
+            return TypedResults.ValidationProblem(errors);
         }
 
-        if (column is < 1 or > 9)
+        if (store.Find(id) is not { } game)
         {
-            errors[nameof(column)] = ["Column must be between 1 and 9."];
+            return TypedResults.NotFound();
         }
 
-        return errors;
+        lock (game)
+        {
+            return TypedResults.Ok(game.Cell(row, column).Candidates);
+        }
     }
+
+    /// <summary>Rows, columns and digits are all 1–9.</summary>
+    private static Dictionary<string, string[]> ValidateOneToNine(params (string Name, int Value)[] values) =>
+        values
+            .Where(value => value.Value is < 1 or > 9)
+            .ToDictionary(value => value.Name, value => new[] { $"{value.Name} must be between 1 and 9." });
 }
+
+public sealed record MoveRequest(int Digit);

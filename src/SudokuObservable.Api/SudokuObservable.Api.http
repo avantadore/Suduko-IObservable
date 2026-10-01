@@ -22,3 +22,20 @@ GET {{SudokuObservable.Api_HostAddress}}/games/{{gameId}}/cells/5/5/candidates
 Accept: application/json
 
 ###
+
+PUT {{SudokuObservable.Api_HostAddress}}/games/{{gameId}}/cells/5/5
+Content-Type: application/json
+Accept: application/json
+
+{ "digit": 7 }
+
+###
+
+# Rejected with 409: 7 is no longer a candidate for a peer of (5, 5).
+PUT {{SudokuObservable.Api_HostAddress}}/games/{{gameId}}/cells/5/9
+Content-Type: application/json
+Accept: application/json
+
+{ "digit": 7 }
+
+###
