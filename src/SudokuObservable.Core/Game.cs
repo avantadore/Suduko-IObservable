@@ -1,5 +1,6 @@
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 
 namespace SudokuObservable.Core;
 
@@ -75,7 +76,7 @@ public sealed class Game
         return _cells[row - 1, column - 1];
     }
 
-    private static void ThrowIfOutside1To9(int value, [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(value))] string? name = null)
+    private static void ThrowIfOutside1To9(int value, [CallerArgumentExpression(nameof(value))] string? name = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(value, 1, name);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(value, 9, name);

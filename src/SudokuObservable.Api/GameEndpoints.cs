@@ -41,7 +41,7 @@ public static class GameEndpoints
     private static Results<Ok<GridResponse>, ProblemHttpResult, ValidationProblem, NotFound> MakeMove(
         Guid id, int row, int column, MoveRequest move, GameStore store)
     {
-        var errors = ValidateDigits((nameof(row), row), (nameof(column), column), ("digit", move.Digit));
+        var errors = ValidateOneToNine(("Row", row), ("Column", column), ("Digit", move.Digit));
         if (errors.Count > 0)
         {
             return TypedResults.ValidationProblem(errors);
@@ -66,7 +66,7 @@ public static class GameEndpoints
     private static Results<Ok<IReadOnlyList<int>>, ValidationProblem, NotFound> GetCandidates(
         Guid id, int row, int column, GameStore store)
     {
-        var errors = ValidateDigits((nameof(row), row), (nameof(column), column));
+        var errors = ValidateOneToNine(("Row", row), ("Column", column));
         if (errors.Count > 0)
         {
             return TypedResults.ValidationProblem(errors);
@@ -84,7 +84,7 @@ public static class GameEndpoints
     }
 
     /// <summary>Rows, columns and digits are all 1–9.</summary>
-    private static Dictionary<string, string[]> ValidateDigits(params (string Name, int Value)[] values) =>
+    private static Dictionary<string, string[]> ValidateOneToNine(params (string Name, int Value)[] values) =>
         values
             .Where(value => value.Value is < 1 or > 9)
             .ToDictionary(value => value.Name, value => new[] { $"{value.Name} must be between 1 and 9." });
