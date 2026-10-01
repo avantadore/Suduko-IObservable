@@ -18,12 +18,12 @@ internal sealed class StepStream
 
     public void Publish(Step step) => _steps.OnNext(step);
 
-    public void Contradict(string reason)
+    public void Contradict(Step.Contradiction contradiction)
     {
         if (!IsContradicted)
         {
             IsContradicted = true;
-            Publish(new Step.Contradiction(reason));
+            Publish(contradiction);
         }
     }
 }

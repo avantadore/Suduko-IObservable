@@ -32,12 +32,12 @@ public sealed class Game
 
         // The rows, then the columns, then the boxes watch their cells for hidden singles and contradictions. The
         // units are kept alive by their subscriptions to the cells.
-        var units = cells.GroupBy(cell => $"row {cell.Row}")
-            .Concat(cells.GroupBy(cell => $"column {cell.Column}"))
-            .Concat(cells.GroupBy(cell => $"box {cell.BoxIndex + 1}"));
+        var units = cells.GroupBy(cell => (Kind: UnitKind.Row, Number: cell.Row))
+            .Concat(cells.GroupBy(cell => (Kind: UnitKind.Column, Number: cell.Column)))
+            .Concat(cells.GroupBy(cell => (Kind: UnitKind.Box, Number: cell.BoxIndex + 1)));
         foreach (var unit in units)
         {
-            _ = new ReactiveUnit(unit.Key, [.. unit], _steps);
+            _ = new ReactiveUnit(unit.Key.Kind, unit.Key.Number, [.. unit], _steps);
         }
     }
 
