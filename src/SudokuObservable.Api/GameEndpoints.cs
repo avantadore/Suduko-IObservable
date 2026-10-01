@@ -19,24 +19,14 @@ public static class GameEndpoints
 
     private static Created<GridResponse> CreateGame(GameStore store)
     {
-        var game = Game.New();
-        var id = store.Add(game);
-        return TypedResults.Created($"/games/{id}", GridResponse.From(id, game));
+        var grid = store.Add(Game.New(), GridResponse.From);
+        return TypedResults.Created($"/games/{grid.Id}", grid);
     }
 
-    private static Results<Ok<GridResponse>, NotFound> GetGame(Guid id, GameStore store)
-    {
-        if (store.Find(id) is not { } game)
-        {
-            return TypedResults.NotFound();
-        }
-
-        // A game is not thread-safe, so every request that touches one holds its lock.
-        lock (game)
-        {
-            return TypedResults.Ok(GridResponse.From(id, game));
-        }
-    }
+    private static Results<Ok<GridResponse>, NotFound> GetGame(Guid id, GameStore store) =>
+        store.TryUse(id, game => GridResponse.From(id, game), out var grid)
+            ? TypedResults.Ok(grid)
+            : TypedResults.NotFound();
 
     private static Results<Ok<GridResponse>, ProblemHttpResult, ValidationProblem, NotFound> MakeMove(
         Guid id, int row, int column, MoveRequest move, GameStore store)
@@ -47,20 +37,17 @@ public static class GameEndpoints
             return TypedResults.ValidationProblem(errors);
         }
 
-        if (store.Find(id) is not { } game)
+        if (!store.TryUse(id, game => (Outcome: game.Move(row, column, move.Digit), Grid: GridResponse.From(id, game)), out var played))
         {
             return TypedResults.NotFound();
         }
 
-        lock (game)
+        return played.Outcome switch
         {
-            return game.Move(row, column, move.Digit) switch
-            {
-                MoveOutcome.Rejected rejected => TypedResults.Problem(
-                    title: "Move rejected", detail: rejected.Reason, statusCode: StatusCodes.Status409Conflict),
-                _ => TypedResults.Ok(GridResponse.From(id, game)),
-            };
-        }
+            MoveOutcome.Rejected rejected => TypedResults.Problem(
+                title: "Move rejected", detail: rejected.Reason, statusCode: StatusCodes.Status409Conflict),
+            _ => TypedResults.Ok(played.Grid),
+        };
     }
 
     private static Results<Ok<IReadOnlyList<int>>, ValidationProblem, NotFound> GetCandidates(
@@ -72,15 +59,9 @@ public static class GameEndpoints
             return TypedResults.ValidationProblem(errors);
         }
 
-        if (store.Find(id) is not { } game)
-        {
-            return TypedResults.NotFound();
-        }
-
-        lock (game)
-        {
-            return TypedResults.Ok(game.Cell(row, column).Candidates);
-        }
+        return store.TryUse(id, game => game.Cell(row, column).Candidates, out var candidates)
+            ? TypedResults.Ok(candidates)
+            : TypedResults.NotFound();
     }
 
     /// <summary>Rows, columns and digits are all 1–9.</summary>
