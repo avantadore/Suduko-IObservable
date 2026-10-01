@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using SudokuObservable.Core.Tests;
 
 namespace SudokuObservable.Api.Tests;
 
@@ -142,6 +143,22 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
         Assert.Equal(HttpStatusCode.Conflict, later.StatusCode);
         var problem = await AssertProblemDetails(later);
         Assert.Contains("contradiction", problem.GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task A_game_reports_in_progress_while_cells_are_empty_and_solved_once_all_81_are_filled()
+    {
+        var id = await CreateGame();
+
+        var responses = new List<HttpResponseMessage>();
+        foreach (var (row, column, digit) in Puzzle.Givens)
+        {
+            responses.Add(await Move(id, row, column, digit));
+        }
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        Assert.Equal("InProgress", (await ReadJson(responses[0])).GetProperty("state").GetString());
+        Assert.Equal("Solved", (await ReadJson(responses[^1])).GetProperty("state").GetString());
     }
 
     [Fact]
