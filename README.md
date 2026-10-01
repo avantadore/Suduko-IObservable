@@ -12,6 +12,8 @@ Sudoku on a grid that propagates its own constraints with `IObservable<T>` (Rx.N
 | `src/SudokuObservable.Api` | REST API (Minimal APIs, OpenAPI, Scalar) |
 | `src/SudokuObservable.Web` | Blazor Web App (Interactive Server), talks to the Api |
 | `tests/SudokuObservable.Core.Tests` | xUnit v3 tests for Core |
+| `tests/SudokuObservable.Api.Tests` | xUnit v3 tests for the Api, over HTTP and on its game store |
+| `tests/SudokuObservable.Web.Tests` | xUnit v3 tests for the Web's API client and display mapping, and that its enums match Core's |
 
 ## Running
 

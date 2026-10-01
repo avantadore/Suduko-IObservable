@@ -5,7 +5,7 @@
              @onclick="() => Select(cell)">
             @if (cell.Digit is { } digit)
             {
-                <span class="digit @cell.Source?.ToLowerInvariant()" title="@cell.Source">@digit</span>
+                <span class="digit @cell.Source?.CssClass()" title="@cell.Source?.Label()">@digit</span>
             }
             else if (IsSelected(cell))
             {

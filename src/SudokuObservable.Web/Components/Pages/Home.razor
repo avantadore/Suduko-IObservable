@@ -9,7 +9,7 @@
     <button type="button" @onclick="NewGame" disabled="@_busy">New game</button>
     @if (_grid is not null)
     {
-        <span class="state @_grid.State.ToLowerInvariant()" role="status">@StateText(_grid.State)</span>
+        <span class="state @_grid.State.CssClass()" role="status">@_grid.State.Label()</span>
     }
 </div>
 
@@ -44,14 +44,6 @@
         }
     });
 
-    private static string StateText(string state) => state switch
-    {
-        "Solved" => "Solved!",
-        "Contradicted" => "Contradicted: this grid can no longer be solved. Start a new game.",
-        "InProgress" => "In progress",
-        _ => state,
-    };
-
     private async Task Call(string failure, Func<Task> call)
     {
         _busy = true;
@@ -60,7 +52,8 @@
         {
             await call();
         }
-        catch (HttpRequestException exception)
+        // A JsonException means the API sent something this page doesn't understand, such as an unknown state.
+        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException)
         {
             _error = $"{failure}: {exception.Message}";
         }

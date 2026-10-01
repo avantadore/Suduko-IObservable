@@ -9,5 +9,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/SudokuObservable.Api.Tests/SudokuObservable.Api.Tests.csproj" />
     <Project Path="tests/SudokuObservable.Core.Tests/SudokuObservable.Core.Tests.csproj" />
+    <Project Path="tests/SudokuObservable.Web.Tests/SudokuObservable.Web.Tests.csproj" />
   </Folder>
 </Solution>

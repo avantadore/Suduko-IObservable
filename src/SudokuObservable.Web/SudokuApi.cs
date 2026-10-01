@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace SudokuObservable.Web;
@@ -7,6 +9,12 @@ namespace SudokuObservable.Web;
 /// <summary>Talks to the Sudoku API, resolved through Aspire service discovery.</summary>
 public sealed class SudokuApi(HttpClient http)
 {
+    // Enums travel as their names. Anything else, such as a renamed member, fails to deserialise instead of passing silently.
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(allowIntegerValues: false) },
+    };
+
     public async Task<Grid> NewGameAsync(CancellationToken cancellationToken = default)
     {
         var response = await http.PostAsync("/games", content: null, cancellationToken);
@@ -29,14 +37,29 @@ public sealed class SudokuApi(HttpClient http)
     private static async Task<Grid> ReadGridAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<Grid>(cancellationToken)
+        return await response.Content.ReadFromJsonAsync<Grid>(Json, cancellationToken)
             ?? throw new HttpRequestException("The API returned no grid.");
     }
 }
 
-public sealed record Grid(Guid Id, string State, IReadOnlyList<GridCell> Cells);
+public sealed record Grid(Guid Id, GameState State, IReadOnlyList<GridCell> Cells);
 
-public sealed record GridCell(int Row, int Column, int? Digit, string? Source, IReadOnlyList<int> Candidates);
+public sealed record GridCell(int Row, int Column, int? Digit, PlacementSource? Source, IReadOnlyList<int> Candidates);
+
+/// <summary>Mirrors the Core enum of the same name, which the Web project cannot reference.</summary>
+public enum GameState
+{
+    InProgress,
+    Solved,
+    Contradicted,
+}
+
+/// <summary>Mirrors the Core enum of the same name, which the Web project cannot reference.</summary>
+public enum PlacementSource
+{
+    Move,
+    Deduction,
+}
 
 public abstract record MoveResult
 {
