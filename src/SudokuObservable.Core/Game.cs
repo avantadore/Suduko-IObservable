@@ -1,3 +1,4 @@
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
@@ -50,6 +51,14 @@ public sealed class Game
         ThrowIfOutside1To9(digit);
         var cell = At(row, column);
 
+        // Inside a running trampoline (a cascade, e.g. a Steps subscriber reacting to a step), the move
+        // would only be queued: it would return before the digit is placed, and the cascade could
+        // invalidate it first.
+        if (!CurrentThreadScheduler.IsScheduleRequired)
+        {
+            throw new InvalidOperationException("A move cannot be made while another move's cascade is running.");
+        }
+
         if (cell.Digit == digit)
         {
             return new MoveOutcome.Unchanged();
@@ -65,7 +74,9 @@ public sealed class Game
             return new MoveOutcome.Rejected($"{digit} is not a candidate for cell ({row}, {column}).");
         }
 
-        cell.Place(digit, PlacementSource.Move);
+        // The move starts Rx's current-thread trampoline, so every deduction its cascade forces is queued
+        // and placed in order before Schedule returns. (Move refuses to run inside a trampoline, see above.)
+        Scheduler.CurrentThread.Schedule(() => cell.Place(digit, PlacementSource.Move));
         return new MoveOutcome.Accepted();
     }
 

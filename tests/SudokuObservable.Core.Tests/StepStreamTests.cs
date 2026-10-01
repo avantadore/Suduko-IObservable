@@ -47,6 +47,66 @@ public class StepStreamTests
     }
 
     [Fact]
+    public void A_cascade_emits_each_deduction_after_the_eliminations_of_the_placement_that_forced_it()
+    {
+        var game = Game.New();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            game.Move(1, digit, digit);
+        }
+
+        var steps = Record(game);
+
+        game.Move(1, 8, 8);
+
+        Step[] expected =
+        [
+            new Step.Placement(1, 8, 8, PlacementSource.Move),
+            new Step.Elimination(1, 9, 8), // leaves (1,9) with only 9
+            new Step.Elimination(2, 7, 8), new Step.Elimination(2, 8, 8), new Step.Elimination(2, 9, 8),
+            new Step.Elimination(3, 7, 8), new Step.Elimination(3, 8, 8), new Step.Elimination(3, 9, 8),
+            new Step.Elimination(4, 8, 8), new Step.Elimination(5, 8, 8), new Step.Elimination(6, 8, 8),
+            new Step.Elimination(7, 8, 8), new Step.Elimination(8, 8, 8), new Step.Elimination(9, 8, 8),
+            new Step.Placement(1, 9, 9, PlacementSource.Deduction),
+            new Step.Elimination(2, 7, 9), new Step.Elimination(2, 8, 9), new Step.Elimination(2, 9, 9),
+            new Step.Elimination(3, 7, 9), new Step.Elimination(3, 8, 9), new Step.Elimination(3, 9, 9),
+            new Step.Elimination(4, 9, 9), new Step.Elimination(5, 9, 9), new Step.Elimination(6, 9, 9),
+            new Step.Elimination(7, 9, 9), new Step.Elimination(8, 9, 9), new Step.Elimination(9, 9, 9),
+        ];
+        Assert.Equal(expected, steps);
+    }
+
+    [Fact]
+    public void A_chained_cascade_emits_each_deduction_after_the_elimination_that_forced_it()
+    {
+        var game = Game.New();
+        for (var digit = 1; digit <= 6; digit++)
+        {
+            game.Move(1, digit, digit);
+        }
+
+        game.Move(7, 8, 9);
+        game.Move(4, 9, 9);
+        var steps = Record(game);
+
+        game.Move(9, 9, 7);
+
+        Step[] placements =
+        [
+            new Step.Placement(9, 9, 7, PlacementSource.Move),
+            new Step.Placement(1, 9, 8, PlacementSource.Deduction),
+            new Step.Placement(1, 8, 7, PlacementSource.Deduction),
+            new Step.Placement(1, 7, 9, PlacementSource.Deduction),
+        ];
+        Assert.Equal(placements, steps.OfType<Step.Placement>());
+
+        // Each deduction comes after the elimination that left its cell with one candidate.
+        Assert.True(steps.IndexOf(new Step.Elimination(1, 9, 7)) < steps.IndexOf(placements[1]));
+        Assert.True(steps.IndexOf(new Step.Elimination(1, 8, 8)) < steps.IndexOf(placements[2]));
+        Assert.True(steps.IndexOf(new Step.Elimination(1, 7, 7)) < steps.IndexOf(placements[3]));
+    }
+
+    [Fact]
     public void Rejected_and_unchanged_moves_emit_nothing()
     {
         var game = Game.New();
