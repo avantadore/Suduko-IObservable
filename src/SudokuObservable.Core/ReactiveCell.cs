@@ -59,7 +59,7 @@ internal sealed class ReactiveCell(int row, int column, StepStream steps)
             }
             else if (Digit is null && _candidates.Count == 0)
             {
-                steps.Contradict($"Cell ({Row}, {Column}) has no candidates left.");
+                steps.Contradict(new Step.Contradiction.NoCandidateForCell(Row, Column));
             }
 
             _lostCandidates.OnNext(digit);

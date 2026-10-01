@@ -14,5 +14,18 @@ public abstract record Step
     public sealed record Elimination(int Row, int Column, int Digit) : Step;
 
     /// <summary>The grid can no longer lead to a solution. The game is read-only from here on.</summary>
-    public sealed record Contradiction(string Reason) : Step;
+    public abstract record Contradiction : Step
+    {
+        private Contradiction()
+        {
+        }
+
+        /// <summary>A cell has no candidates left.</summary>
+        public sealed record NoCandidateForCell(int Row, int Column) : Contradiction;
+
+        /// <summary>
+        /// A digit has no possible cell left in a unit. Boxes are numbered 1–9 row by row, starting top left.
+        /// </summary>
+        public sealed record NoCellForDigit(UnitKind UnitKind, int UnitNumber, int Digit) : Contradiction;
+    }
 }
