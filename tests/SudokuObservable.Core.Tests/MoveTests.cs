@@ -1,3 +1,5 @@
+using System.Reactive.Linq;
+
 namespace SudokuObservable.Core.Tests;
 
 public class MoveTests
@@ -87,6 +89,19 @@ public class MoveTests
         var game = Game.New();
 
         Assert.Throws<ArgumentOutOfRangeException>(() => game.Move(1, 1, digit));
+    }
+
+    [Fact]
+    public void A_move_cannot_be_made_while_another_moves_cascade_is_running()
+    {
+        var game = Game.New();
+        Exception? fromInnerMove = null;
+        game.Steps.Take(1).Subscribe(_ => fromInnerMove = Record.Exception(() => game.Move(9, 9, 1)));
+
+        game.Move(1, 1, 5);
+
+        Assert.IsType<InvalidOperationException>(fromInnerMove);
+        Assert.Null(game.Cell(9, 9).Digit);
     }
 
     private static List<string> GridOf(Game game) =>
