@@ -69,7 +69,7 @@ A digit that has only one possible cell within a unit, which forces a deduction 
 _Avoid_: Unique candidate
 
 **Contradiction**:
-A grid state that cannot lead to a solution: a cell with no candidates, or a digit that appears twice in a unit. A game in contradiction is stuck.
+A grid state that cannot lead to a solution: a cell with no candidates, a digit that appears twice in a unit, or a digit with no possible cell left in a unit. A game in contradiction is stuck.
 _Avoid_: Error, invalid state, conflict
 
 **Step**:

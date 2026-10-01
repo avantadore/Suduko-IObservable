@@ -9,7 +9,7 @@
     <button type="button" @onclick="NewGame" disabled="@_busy">New game</button>
     @if (_grid is not null)
     {
-        <span class="state">@_grid.State</span>
+        <span class="state @_grid.State.ToLowerInvariant()" role="status">@StateText(_grid.State)</span>
     }
 </div>
 
@@ -43,6 +43,14 @@
                 break;
         }
     });
+
+    private static string StateText(string state) => state switch
+    {
+        "Solved" => "Solved!",
+        "Contradicted" => "Contradicted: this grid can no longer be solved. Start a new game.",
+        "InProgress" => "In progress",
+        _ => state,
+    };
 
     private async Task Call(string failure, Func<Task> call)
     {

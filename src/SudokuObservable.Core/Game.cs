@@ -1,6 +1,4 @@
 using System.Reactive.Concurrency;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 
 namespace SudokuObservable.Core;
@@ -8,7 +6,7 @@ namespace SudokuObservable.Core;
 /// <summary>A session in which one 9×9 grid is filled in. Every game starts with all 81 cells empty.</summary>
 public sealed class Game
 {
-    private readonly Subject<Step> _steps = new();
+    private readonly StepLog _log = new();
     private readonly ReactiveCell[,] _cells = new ReactiveCell[9, 9];
 
     private Game()
@@ -17,7 +15,7 @@ public sealed class Game
         {
             for (var column = 1; column <= 9; column++)
             {
-                _cells[row - 1, column - 1] = new ReactiveCell(row, column, _steps);
+                _cells[row - 1, column - 1] = new ReactiveCell(row, column, _log);
             }
         }
 
@@ -32,23 +30,30 @@ public sealed class Game
             }
         }
 
-        // The rows, then the columns, then the boxes watch their cells for hidden singles. The units are kept
-        // alive by their subscriptions to the cells.
-        var units = cells.GroupBy(cell => cell.Row)
-            .Concat(cells.GroupBy(cell => cell.Column))
-            .Concat(cells.GroupBy(cell => cell.BoxIndex));
+        // The rows, then the columns, then the boxes watch their cells for hidden singles and contradictions. The
+        // units are kept alive by their subscriptions to the cells.
+        var units = cells.GroupBy(cell => $"row {cell.Row}")
+            .Concat(cells.GroupBy(cell => $"column {cell.Column}"))
+            .Concat(cells.GroupBy(cell => $"box {cell.BoxIndex + 1}"));
         foreach (var unit in units)
         {
-            _ = new ReactiveUnit([.. unit]);
+            _ = new ReactiveUnit(unit.Key, [.. unit], _log);
         }
     }
 
     public static Game New() => new();
 
-    public GameState State => GameState.InProgress;
+    public GameState State =>
+        _log.IsContradicted ? GameState.Contradicted
+        : _cells.Cast<ReactiveCell>().All(cell => cell.Digit is not null) ? GameState.Solved
+        : GameState.InProgress;
 
-    /// <summary>Everything that happens to the grid: each move, followed by the steps of its cascade.</summary>
-    public IObservable<Step> Steps => _steps.AsObservable();
+    /// <summary>
+    /// Everything that happens to the grid: each move, followed by the steps of its cascade. A contradiction is a
+    /// step too, so the stream never errors or completes. It is not necessarily the last step of its move: the
+    /// eliminations of the placement that reached it still follow, but no further deductions do.
+    /// </summary>
+    public IObservable<Step> Steps => _log.Steps;
 
     /// <summary>All 81 cells, row by row.</summary>
     public IEnumerable<Cell> Cells => _cells.Cast<ReactiveCell>().Select(cell => cell.Snapshot());
@@ -67,6 +72,12 @@ public sealed class Game
         if (!CurrentThreadScheduler.IsScheduleRequired)
         {
             throw new InvalidOperationException("A move cannot be made while another move's cascade is running.");
+        }
+
+        if (_log.IsContradicted)
+        {
+            return new MoveOutcome.Rejected(
+                "The game is in contradiction, so no more moves can be made. Start a new game.");
         }
 
         if (cell.Digit == digit)
