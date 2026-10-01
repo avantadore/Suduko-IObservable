@@ -31,6 +31,16 @@ public sealed class Game
                 peer.Placements.Subscribe(cell.Eliminate);
             }
         }
+
+        // The rows, then the columns, then the boxes watch their cells for hidden singles. The units are kept
+        // alive by their subscriptions to the cells.
+        var units = cells.GroupBy(cell => cell.Row)
+            .Concat(cells.GroupBy(cell => cell.Column))
+            .Concat(cells.GroupBy(cell => cell.BoxIndex));
+        foreach (var unit in units)
+        {
+            _ = new ReactiveUnit([.. unit]);
+        }
     }
 
     public static Game New() => new();

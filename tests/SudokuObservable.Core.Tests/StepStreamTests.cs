@@ -77,7 +77,7 @@ public class StepStreamTests
     }
 
     [Fact]
-    public void A_chained_cascade_emits_each_deduction_after_the_elimination_that_forced_it()
+    public void Deductions_forced_by_the_same_elimination_are_placed_in_the_order_they_were_forced()
     {
         var game = Game.New();
         for (var digit = 1; digit <= 6; digit++)
@@ -85,10 +85,13 @@ public class StepStreamTests
             game.Move(1, digit, digit);
         }
 
-        game.Move(7, 8, 9);
-        game.Move(4, 9, 9);
+        game.Move(7, 8, 9); // (1,8) is left with 7 and 8
+        game.Move(4, 9, 9); // (1,9) is left with 7 and 8, so 9 is a hidden single at (1,7)
+        Assert.Equal(PlacementSource.Deduction, game.Cell(1, 7).Source);
         var steps = Record(game);
 
+        // Eliminating 7 from (1,9) forces two deductions: (1,9) is a naked single for 8, and (1,8) is the
+        // only cell left for 7 in row 1. The cell's own naked single is queued before its units' hidden singles.
         game.Move(9, 9, 7);
 
         Step[] placements =
@@ -96,14 +99,9 @@ public class StepStreamTests
             new Step.Placement(9, 9, 7, PlacementSource.Move),
             new Step.Placement(1, 9, 8, PlacementSource.Deduction),
             new Step.Placement(1, 8, 7, PlacementSource.Deduction),
-            new Step.Placement(1, 7, 9, PlacementSource.Deduction),
         ];
         Assert.Equal(placements, steps.OfType<Step.Placement>());
-
-        // Each deduction comes after the elimination that left its cell with one candidate.
         Assert.True(steps.IndexOf(new Step.Elimination(1, 9, 7)) < steps.IndexOf(placements[1]));
-        Assert.True(steps.IndexOf(new Step.Elimination(1, 8, 8)) < steps.IndexOf(placements[2]));
-        Assert.True(steps.IndexOf(new Step.Elimination(1, 7, 7)) < steps.IndexOf(placements[3]));
     }
 
     [Fact]
