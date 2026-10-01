@@ -8,3 +8,15 @@
 .error {
     color: #b32121;
 }
+
+.state {
+    font-weight: 600;
+}
+
+.state.solved {
+    color: #2e8b57;
+}
+
+.state.contradicted {
+    color: #b32121;
+}

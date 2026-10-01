@@ -8,7 +8,7 @@ namespace SudokuObservable.Core;
 /// The live state of one cell. Its placements are observable, so its peers can subscribe and eliminate, and so
 /// are the candidates it loses, so its units can look for hidden singles.
 /// </summary>
-internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
+internal sealed class ReactiveCell(int row, int column, StepLog log)
 {
     private readonly SortedSet<int> _candidates = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     private readonly Subject<int> _placements = new();
@@ -42,7 +42,7 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
         Digit = digit;
         Source = source;
         _candidates.IntersectWith([digit]);
-        steps.OnNext(new Step.Placement(Row, Column, digit, source));
+        log.Record(new Step.Placement(Row, Column, digit, source));
         _placements.OnNext(digit);
         lost.ForEach(_lostCandidates.OnNext);
     }
@@ -51,11 +51,15 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
     {
         if (_candidates.Remove(digit))
         {
-            steps.OnNext(new Step.Elimination(Row, Column, digit));
+            log.Record(new Step.Elimination(Row, Column, digit));
 
             if (Digit is null && _candidates.Count == 1)
             {
                 Deduce(_candidates.Min); // a naked single
+            }
+            else if (Digit is null && _candidates.Count == 0)
+            {
+                log.Contradict($"Cell ({Row}, {Column}) has no candidates left.");
             }
 
             _lostCandidates.OnNext(digit);
@@ -68,10 +72,11 @@ internal sealed class ReactiveCell(int row, int column, IObserver<Step> steps)
     /// </summary>
     public void Deduce(int digit) => Scheduler.CurrentThread.Schedule(() => PlaceDeduction(digit));
 
-    // By the time a queued deduction runs, the cascade may have filled the cell or removed the digit.
+    // By the time a queued deduction runs, the cascade may have filled the cell, removed the digit or reached a
+    // contradiction, after which nothing more is deduced.
     private void PlaceDeduction(int digit)
     {
-        if (Digit is null && HasCandidate(digit))
+        if (!log.IsContradicted && Digit is null && HasCandidate(digit))
         {
             Place(digit, PlacementSource.Deduction);
         }

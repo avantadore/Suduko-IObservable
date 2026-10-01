@@ -12,4 +12,7 @@ public abstract record Step
 
     /// <summary>A candidate was removed from a cell because one of its peers holds that digit.</summary>
     public sealed record Elimination(int Row, int Column, int Digit) : Step;
+
+    /// <summary>The grid can no longer lead to a solution. The game is read-only from here on.</summary>
+    public sealed record Contradiction(string Reason) : Step;
 }

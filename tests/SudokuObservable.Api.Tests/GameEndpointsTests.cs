@@ -125,6 +125,26 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
     }
 
     [Fact]
+    public async Task A_move_into_contradiction_returns_200_with_the_state_and_later_moves_return_409()
+    {
+        var id = await CreateGame();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            await Move(id, 1, digit, digit);
+        }
+
+        // Legal, but leaves 9 with no place in row 1.
+        var contradicting = await Move(id, 2, 7, 9);
+        var later = await Move(id, 5, 5, 5);
+
+        Assert.Equal(HttpStatusCode.OK, contradicting.StatusCode);
+        Assert.Equal("Contradicted", (await ReadJson(contradicting)).GetProperty("state").GetString());
+        Assert.Equal(HttpStatusCode.Conflict, later.StatusCode);
+        var problem = await AssertProblemDetails(later);
+        Assert.Contains("contradiction", problem.GetProperty("detail").GetString());
+    }
+
+    [Fact]
     public async Task Repeating_a_move_returns_200_with_the_unchanged_grid()
     {
         var id = await CreateGame();
