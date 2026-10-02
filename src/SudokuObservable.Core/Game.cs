@@ -1,116 +1,93 @@
-using System.Reactive.Concurrency;
-using System.Runtime.CompilerServices;
+using System.Diagnostics.CodeAnalysis;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 
 namespace SudokuObservable.Core;
 
 /// <summary>A session in which one 9×9 grid is filled in. Every game starts with all 81 cells empty.</summary>
 public sealed class Game
 {
-    private readonly StepStream _steps = new();
-    private readonly ReactiveCell[,] _cells = new ReactiveCell[9, 9];
+    private readonly List<RecordedMove> _moves = [];
+    private readonly Subject<Step> _steps = new();
+    private readonly SerialDisposable _forwarding = new();
+    private Grid _grid;
 
-    private Game()
-    {
-        for (var row = 1; row <= 9; row++)
-        {
-            for (var column = 1; column <= 9; column++)
-            {
-                _cells[row - 1, column - 1] = new ReactiveCell(row, column, _steps);
-            }
-        }
-
-        // Every cell subscribes to its peers' placements. Cells subscribe row by row, so each placement
-        // reaches its peers, and its eliminations happen, in row-by-row order.
-        var cells = _cells.Cast<ReactiveCell>().ToList();
-        foreach (var cell in cells)
-        {
-            foreach (var peer in cells.Where(cell.IsPeerOf))
-            {
-                peer.Placements.Subscribe(cell.Eliminate);
-            }
-        }
-
-        // The rows, then the columns, then the boxes watch their cells for hidden singles and contradictions. The
-        // units are kept alive by their subscriptions to the cells.
-        var units = cells.GroupBy(cell => (Kind: UnitKind.Row, Number: cell.Row))
-            .Concat(cells.GroupBy(cell => (Kind: UnitKind.Column, Number: cell.Column)))
-            .Concat(cells.GroupBy(cell => (Kind: UnitKind.Box, Number: cell.BoxIndex + 1)));
-        foreach (var unit in units)
-        {
-            _ = new ReactiveUnit(unit.Key.Kind, unit.Key.Number, [.. unit], _steps);
-        }
-    }
+    private Game() => Use(new Grid());
 
     public static Game New() => new();
 
-    public GameState State =>
-        _steps.IsContradicted ? GameState.Contradicted
-        : _cells.Cast<ReactiveCell>().All(cell => cell.Digit is not null) ? GameState.Solved
-        : GameState.InProgress;
+    public GameState State => _grid.State;
+
+    /// <summary>The moves this game has accepted, in order.</summary>
+    public IReadOnlyList<RecordedMove> Moves => _moves.AsReadOnly();
+
+    /// <summary>How many moves from the start of <see cref="Moves"/> apply to the grid. 0 is the empty grid.</summary>
+    public int Position { get; private set; }
 
     /// <summary>
     /// Everything that happens to the grid: each move, followed by the steps of its cascade. A contradiction is a
     /// step too, so the stream never errors or completes. It is not necessarily the last step of its move: the
-    /// eliminations of the placement that reached it still follow, but no further deductions do.
+    /// eliminations of the placement that reached it still follow, but no further deductions do. A replay emits
+    /// nothing: subscribers stay subscribed and receive the steps of the moves made after it.
     /// </summary>
-    public IObservable<Step> Steps => _steps.Steps;
+    public IObservable<Step> Steps => _steps.AsObservable();
 
     /// <summary>All 81 cells, row by row.</summary>
-    public IEnumerable<Cell> Cells => _cells.Cast<ReactiveCell>().Select(cell => cell.Snapshot());
+    public IEnumerable<Cell> Cells => _grid.Cells;
 
-    public Cell Cell(int row, int column) => At(row, column).Snapshot();
+    public Cell Cell(int row, int column) => _grid.Cell(row, column);
 
-    /// <summary>The player places <paramref name="digit"/> in a cell.</summary>
+    /// <summary>The player places <paramref name="digit"/> in a cell. Only an accepted move enters the move history.</summary>
     public MoveOutcome Move(int row, int column, int digit)
     {
-        ThrowIfOutside1To9(digit);
-        var cell = At(row, column);
-
-        // Inside a running trampoline (a cascade, e.g. a Steps subscriber reacting to a step), the move
-        // would only be queued: it would return before the digit is placed, and the cascade could
-        // invalidate it first.
-        if (!CurrentThreadScheduler.IsScheduleRequired)
+        // The cascade runs to completion inside Move, so a subscription for its duration sees exactly its steps.
+        var deductions = 0;
+        MoveOutcome outcome;
+        using (_grid.Steps.Subscribe(step => deductions += step is Step.Placement { Source: PlacementSource.Deduction } ? 1 : 0))
         {
-            throw new InvalidOperationException("A move cannot be made while another move's cascade is running.");
+            outcome = _grid.Move(row, column, digit);
         }
 
-        if (_steps.IsContradicted)
+        if (outcome is MoveOutcome.Accepted)
         {
-            return new MoveOutcome.Rejected(
-                "The game is in contradiction, so no more moves can be made. Start a new game.");
+            _moves.RemoveRange(Position, _moves.Count - Position);
+            _moves.Add(new RecordedMove(row, column, digit, deductions));
+            Position = _moves.Count;
         }
 
-        if (cell.Digit == digit)
-        {
-            return new MoveOutcome.Unchanged();
-        }
-
-        if (cell.Digit is { } placed)
-        {
-            return new MoveOutcome.Rejected($"Cell ({row}, {column}) already holds {placed}, and placements are final.");
-        }
-
-        if (!cell.HasCandidate(digit))
-        {
-            return new MoveOutcome.Rejected($"{digit} is not a candidate for cell ({row}, {column}).");
-        }
-
-        // The move starts Rx's current-thread trampoline, so every deduction its cascade forces is queued
-        // and placed in order before Schedule returns. (Move refuses to run inside a trampoline, see above.)
-        Scheduler.CurrentThread.Schedule(() => cell.Place(digit, PlacementSource.Move));
-        return new MoveOutcome.Accepted();
+        return outcome;
     }
 
-    private ReactiveCell At(int row, int column)
+    /// <summary>Rebuilds the grid from the first <paramref name="position"/> moves, which becomes the game's position.</summary>
+    public void ReplayTo(int position)
     {
-        ThrowIfOutside1To9(row);
-        ThrowIfOutside1To9(column);
-        return _cells[row - 1, column - 1];
+        ArgumentOutOfRangeException.ThrowIfNegative(position);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(position, _moves.Count);
+
+        var grid = new Grid();
+        foreach (var move in _moves.Take(position))
+        {
+            // Propagation is deterministic (ADR 0002), so a recorded move is accepted again. If it ever isn't, the
+            // grid would no longer match the history, so fail before the replayed grid is used.
+            if (grid.Move(move.Row, move.Column, move.Digit) is not MoveOutcome.Accepted)
+            {
+                throw new InvalidOperationException($"Replaying {move} was not accepted, so the grid would not match the move history.");
+            }
+        }
+
+        Use(grid);
+        Position = position;
     }
 
-    private static void ThrowIfOutside1To9(int value, [CallerArgumentExpression(nameof(value))] string? name = null)
+    /// <summary>
+    /// Makes a fully built grid current, so subscribers to <see cref="Steps"/> see only what happens to it from now on
+    /// (ADR 0002).
+    /// </summary>
+    [MemberNotNull(nameof(_grid))]
+    private void Use(Grid grid)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(value, 1, name);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(value, 9, name);
+        _grid = grid;
+        _forwarding.Disposable = grid.Steps.Subscribe(_steps.OnNext);
     }
 }

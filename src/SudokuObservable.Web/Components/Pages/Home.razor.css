@@ -20,3 +20,9 @@
 .state.contradicted {
     color: #b32121;
 }
+
+.play {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+}

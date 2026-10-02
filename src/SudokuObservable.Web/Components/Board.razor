@@ -15,7 +15,7 @@
                         var digitToPlace = candidate;
                         @if (cell.Candidates.Contains(candidate))
                         {
-                            <button type="button" aria-label="Place @candidate"
+                            <button type="button" aria-label="Place @candidate" disabled="@Busy"
                                     @onclick="() => Place(cell, digitToPlace)" @onclick:stopPropagation>@candidate</button>
                         }
                         else
@@ -41,6 +41,10 @@
 @code {
     [Parameter, EditorRequired]
     public required Grid Grid { get; set; }
+
+    /// <summary>While true, no digit can be picked, so a move never races another request.</summary>
+    [Parameter]
+    public bool Busy { get; set; }
 
     /// <summary>Raised when the player picks one of an empty cell's candidates.</summary>
     [Parameter]

@@ -39,3 +39,21 @@ Accept: application/json
 { "digit": 7 }
 
 ###
+
+# Replays the game to just after its first move. Later moves are kept, so they can be replayed forward again.
+PUT {{SudokuObservable.Api_HostAddress}}/games/{{gameId}}/position
+Content-Type: application/json
+Accept: application/json
+
+{ "position": 1 }
+
+###
+
+# Rejected with 400: the game has fewer moves than that.
+PUT {{SudokuObservable.Api_HostAddress}}/games/{{gameId}}/position
+Content-Type: application/json
+Accept: application/json
+
+{ "position": 99 }
+
+###
