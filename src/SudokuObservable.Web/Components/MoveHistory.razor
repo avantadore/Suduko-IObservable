@@ -1,9 +1,9 @@
 <section class="history" aria-label="Move history">
     <div class="history-header">
         <h2>Moves</h2>
-        <button type="button" aria-label="Step back one move" disabled="@(!HistoryDisplay.CanStepBack(Grid.Position, Busy))"
+        <button type="button" aria-label="Replay to the previous move" disabled="@(!HistoryDisplay.CanReplayBack(Grid.Position, Busy))"
                 @onclick="() => OnReplay.InvokeAsync(Grid.Position - 1)">◀</button>
-        <button type="button" aria-label="Step forward one move" disabled="@(!HistoryDisplay.CanStepForward(Grid.Position, Grid.Moves.Count, Busy))"
+        <button type="button" aria-label="Replay to the next move" disabled="@(!HistoryDisplay.CanReplayForward(Grid.Position, Grid.Moves.Count, Busy))"
                 @onclick="() => OnReplay.InvokeAsync(Grid.Position + 1)">▶</button>
     </div>
     <ol>

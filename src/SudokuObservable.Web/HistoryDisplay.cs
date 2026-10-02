@@ -9,11 +9,11 @@ public static class HistoryDisplay
         .. moves.Select((move, index) => Row(index + 1, move, position)),
     ];
 
-    /// <summary>◀ steps back one move, as far as the empty grid.</summary>
-    public static bool CanStepBack(int position, bool busy) => !busy && position > 0;
+    /// <summary>◀ replays to the previous position, as far back as the empty grid.</summary>
+    public static bool CanReplayBack(int position, bool busy) => !busy && position > 0;
 
-    /// <summary>▶ steps forward one kept move, as far as the last move.</summary>
-    public static bool CanStepForward(int position, int moves, bool busy) => !busy && position < moves;
+    /// <summary>▶ replays to the next position, as far forward as the last kept move.</summary>
+    public static bool CanReplayForward(int position, int moves, bool busy) => !busy && position < moves;
 
     public static string CssClass(this HistoryRowState state) => state switch
     {

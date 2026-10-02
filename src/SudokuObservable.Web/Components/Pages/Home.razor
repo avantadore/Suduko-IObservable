@@ -22,7 +22,7 @@
 {
     <div class="play">
         @* Keyed by game and replay, so a new game or a replay starts with a fresh board and nothing selected. *@
-        <Board @key="(_grid.Id, _replays)" Grid="_grid" OnPick="Place" />
+        <Board @key="(_grid.Id, _replays)" Grid="_grid" Busy="_busy" OnPick="Place" />
         <MoveHistory Grid="_grid" Busy="_busy" OnReplay="Replay" />
     </div>
 }

@@ -68,7 +68,12 @@ public sealed class Game
         var grid = new Grid();
         foreach (var move in _moves.Take(position))
         {
-            grid.Move(move.Row, move.Column, move.Digit);
+            // Propagation is deterministic (ADR 0002), so a recorded move is accepted again. If it ever isn't, the
+            // grid would no longer match the history, so fail before the replayed grid is used.
+            if (grid.Move(move.Row, move.Column, move.Digit) is not MoveOutcome.Accepted)
+            {
+                throw new InvalidOperationException($"Replaying {move} was not accepted, so the grid would not match the move history.");
+            }
         }
 
         Use(grid);

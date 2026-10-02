@@ -51,10 +51,10 @@ public class HistoryDisplayTests
     [InlineData(1, 2, false, true, true)]
     [InlineData(2, 2, false, true, false)]
     [InlineData(1, 2, true, false, false)]
-    public void Stepping_back_and_forward_is_possible_between_the_empty_grid_and_the_last_move_while_not_busy(
-        int position, int moves, bool busy, bool canStepBack, bool canStepForward)
+    public void Replaying_back_and_forward_is_possible_between_the_empty_grid_and_the_last_move_while_not_busy(
+        int position, int moves, bool busy, bool canReplayBack, bool canReplayForward)
     {
-        Assert.Equal(canStepBack, HistoryDisplay.CanStepBack(position, busy));
-        Assert.Equal(canStepForward, HistoryDisplay.CanStepForward(position, moves, busy));
+        Assert.Equal(canReplayBack, HistoryDisplay.CanReplayBack(position, busy));
+        Assert.Equal(canReplayForward, HistoryDisplay.CanReplayForward(position, moves, busy));
     }
 }
