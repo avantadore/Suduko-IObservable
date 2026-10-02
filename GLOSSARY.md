@@ -7,11 +7,11 @@ Playing classic 9×9 Sudoku on a grid that propagates its own constraints: every
 ### The game and its state
 
 **Game**:
-A session in which one grid is filled in, one move at a time. Every game starts with all 81 cells empty.
+A session in which one grid is filled in, one move at a time. Every game starts with all 81 cells empty. A game owns its move history and position; a replay rebuilds its grid, but it remains the same game.
 _Avoid_: Session, match, board, puzzle
 
 **Grid**:
-The 81 cells and their current state within a game.
+The 81 cells and their current state within a game, as determined by the moves up to the game's position.
 _Avoid_: Board, puzzle
 
 **Cell**:
@@ -83,7 +83,7 @@ _Avoid_: Propagation run, chain reaction, ripple
 ### History
 
 **Move history**:
-The ordered list of moves a game has accepted. Together with the rules, it fully determines the grid; deductions, eliminations and contradictions are never recorded, only recomputed.
+The ordered list of moves a game has accepted. Together with the rules, it fully determines the grid; deductions, eliminations and contradictions are never recorded, only recomputed. Each move does carry how many deductions its cascade made.
 _Avoid_: Event log, event stream, command log, undo stack
 
 **Position**:
