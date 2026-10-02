@@ -34,6 +34,13 @@ public sealed class SudokuApi(HttpClient http)
         return new MoveResult.Accepted(await ReadGridAsync(response, cancellationToken));
     }
 
+    /// <summary>Replays the game to <paramref name="position"/>, from 0 (the empty grid) to the number of moves.</summary>
+    public async Task<Grid> SetPositionAsync(Guid id, int position, CancellationToken cancellationToken = default)
+    {
+        var response = await http.PutAsJsonAsync($"/games/{id}/position", new { position }, cancellationToken);
+        return await ReadGridAsync(response, cancellationToken);
+    }
+
     private static async Task<Grid> ReadGridAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         response.EnsureSuccessStatusCode();

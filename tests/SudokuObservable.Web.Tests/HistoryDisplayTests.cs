@@ -27,10 +27,34 @@ public class HistoryDisplayTests
         Assert.Equal(expected, rows);
     }
 
+    [Fact]
+    public void Moves_after_the_position_are_kept_as_rows_after_the_current_one()
+    {
+        GridMove[] moves = [new(1, 1, 5, 0), new(2, 3, 8, 1), new(4, 7, 2, 5)];
+
+        var states = HistoryDisplay.Rows(position: 1, moves).Select(row => row.State);
+
+        Assert.Equal([HistoryRowState.Applied, HistoryRowState.Current, HistoryRowState.After, HistoryRowState.After], states);
+    }
+
     // The classes are the ones MoveHistory.razor.css styles.
     [Theory]
     [InlineData(HistoryRowState.Applied, "applied")]
     [InlineData(HistoryRowState.Current, "current")]
+    [InlineData(HistoryRowState.After, "after")]
     public void A_history_row_state_is_shown_with_its_class(HistoryRowState state, string cssClass) =>
         Assert.Equal(cssClass, state.CssClass());
+
+    [Theory]
+    [InlineData(0, 0, false, false, false)]
+    [InlineData(0, 2, false, false, true)]
+    [InlineData(1, 2, false, true, true)]
+    [InlineData(2, 2, false, true, false)]
+    [InlineData(1, 2, true, false, false)]
+    public void Stepping_back_and_forward_is_possible_between_the_empty_grid_and_the_last_move_while_not_busy(
+        int position, int moves, bool busy, bool canStepBack, bool canStepForward)
+    {
+        Assert.Equal(canStepBack, HistoryDisplay.CanStepBack(position, busy));
+        Assert.Equal(canStepForward, HistoryDisplay.CanStepForward(position, moves, busy));
+    }
 }

@@ -21,9 +21,9 @@
 @if (_grid is not null)
 {
     <div class="play">
-        @* Keyed by game, so a new game starts with a fresh board and nothing selected. *@
-        <Board @key="_grid.Id" Grid="_grid" OnPick="Place" />
-        <MoveHistory Grid="_grid" />
+        @* Keyed by game and replay, so a new game or a replay starts with a fresh board and nothing selected. *@
+        <Board @key="(_grid.Id, _replays)" Grid="_grid" OnPick="Place" />
+        <MoveHistory Grid="_grid" Busy="_busy" OnReplay="Replay" />
     </div>
 }
 
@@ -31,6 +31,7 @@
     private Grid? _grid;
     private string? _error;
     private bool _busy;
+    private int _replays;
 
     private Task NewGame() => Call("Could not start a new game", async () => _grid = await Api.NewGameAsync());
 
@@ -45,6 +46,12 @@
                 _error = rejected.Reason;
                 break;
         }
+    });
+
+    private Task Replay(int position) => Call("Could not replay the game", async () =>
+    {
+        _grid = await Api.SetPositionAsync(_grid!.Id, position);
+        _replays++;
     });
 
     private async Task Call(string failure, Func<Task> call)

@@ -31,6 +31,22 @@ public class SudokuApiTests
         Assert.Equal([new GridMove(1, 1, 5, 0), new GridMove(4, 7, 2, 3)], grid.Moves);
     }
 
+    [Fact]
+    public async Task Setting_the_position_puts_it_to_the_game_and_reads_the_replayed_grid()
+    {
+        var handler = new StubHandler(GridJson(state: "InProgress", source: "\"Move\""));
+        var api = new SudokuApi(new HttpClient(handler) { BaseAddress = new Uri("http://api") });
+        var id = Guid.NewGuid();
+
+        var grid = await api.SetPositionAsync(id, 1, Cancellation);
+
+        Assert.Equal(HttpMethod.Put, handler.Request?.Method);
+        Assert.Equal($"/games/{id}/position", handler.Request?.RequestUri?.AbsolutePath);
+        Assert.Equal("""{"position":1}""", handler.Body);
+        Assert.Equal(1, grid.Position);
+        Assert.Equal(2, grid.Moves.Count);
+    }
+
     [Theory]
     [InlineData("Won", "\"Move\"")]
     [InlineData("1", "\"Move\"")]
@@ -67,12 +83,21 @@ public class SudokuApiTests
     private static SudokuApi ApiReturning(string json) =>
         new(new HttpClient(new StubHandler(json)) { BaseAddress = new Uri("http://api") });
 
+    /// <summary>Answers every request with <paramref name="json"/>, and remembers the last request and its body.</summary>
     private sealed class StubHandler(string json) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.Created)
+        public HttpRequestMessage? Request { get; private set; }
+
+        public string? Body { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Request = request;
+            Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.Created)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json"),
-            });
+            };
+        }
     }
 }

@@ -9,10 +9,17 @@ public static class HistoryDisplay
         .. moves.Select((move, index) => Row(index + 1, move, position)),
     ];
 
+    /// <summary>◀ steps back one move, as far as the empty grid.</summary>
+    public static bool CanStepBack(int position, bool busy) => !busy && position > 0;
+
+    /// <summary>▶ steps forward one kept move, as far as the last move.</summary>
+    public static bool CanStepForward(int position, int moves, bool busy) => !busy && position < moves;
+
     public static string CssClass(this HistoryRowState state) => state switch
     {
         HistoryRowState.Applied => "applied",
         HistoryRowState.Current => "current",
+        HistoryRowState.After => "after",
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 
@@ -30,7 +37,9 @@ public static class HistoryDisplay
             StateOf(number, position));
 
     private static HistoryRowState StateOf(int rowPosition, int position) =>
-        rowPosition == position ? HistoryRowState.Current : HistoryRowState.Applied;
+        rowPosition < position ? HistoryRowState.Applied
+        : rowPosition == position ? HistoryRowState.Current
+        : HistoryRowState.After;
 }
 
 /// <summary>
@@ -46,4 +55,7 @@ public enum HistoryRowState
 
     /// <summary>The row is the game's position.</summary>
     Current,
+
+    /// <summary>The row's move is kept but does not apply, until a new move discards it.</summary>
+    After,
 }

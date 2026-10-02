@@ -152,6 +152,86 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
     }
 
     [Fact]
+    public async Task Setting_the_position_replays_the_grid_back_and_forward_and_keeps_every_move()
+    {
+        var id = await CreateGame();
+        await Move(id, 1, 1, 5);
+        await Move(id, 2, 4, 5);
+
+        var back = await SetPosition(id, 1);
+        var backGrid = await ReadJson(back);
+        var forward = await ReadJson(await SetPosition(id, 2));
+
+        Assert.Equal(HttpStatusCode.OK, back.StatusCode);
+        Assert.Equal(1, backGrid.GetProperty("position").GetInt32());
+        Assert.Equal(2, backGrid.GetProperty("moves").GetArrayLength());
+        Assert.Equal(5, CellOf(backGrid, 1, 1).GetProperty("digit").GetInt32());
+        Assert.Equal(JsonValueKind.Null, CellOf(backGrid, 2, 4).GetProperty("digit").ValueKind);
+        AssertGridShape(backGrid);
+        Assert.Equal(2, forward.GetProperty("position").GetInt32());
+        Assert.Equal(5, CellOf(forward, 2, 4).GetProperty("digit").GetInt32());
+    }
+
+    [Fact]
+    public async Task Setting_the_same_position_twice_gives_the_same_grid()
+    {
+        var id = await CreateGame();
+        await Move(id, 1, 1, 5);
+        await Move(id, 2, 4, 5);
+
+        var first = await ReadJson(await SetPosition(id, 1));
+        var second = await ReadJson(await SetPosition(id, 1));
+
+        Assert.Equal(first.GetRawText(), second.GetRawText());
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(3)]
+    public async Task Setting_a_position_outside_0_to_the_number_of_moves_returns_400_keyed_position(int position)
+    {
+        var id = await CreateGame();
+        await Move(id, 1, 1, 5);
+        await Move(id, 2, 4, 5);
+
+        var response = await SetPosition(id, position);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await AssertProblemDetails(response);
+        Assert.Equal(["Position"], problem.GetProperty("errors").EnumerateObject().Select(error => error.Name));
+    }
+
+    [Fact]
+    public async Task Setting_the_position_of_an_unknown_game_returns_404()
+    {
+        var response = await SetPosition(Guid.NewGuid().ToString(), 0);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_move_at_an_earlier_position_discards_the_later_moves_but_a_rejected_one_does_not()
+    {
+        var id = await CreateGame();
+        await Move(id, 1, 1, 5);
+        await Move(id, 2, 4, 5);
+        await Move(id, 5, 5, 7);
+        await SetPosition(id, 1);
+
+        var rejected = await Move(id, 1, 2, 5); // 5 is no longer a candidate in row 1
+        var kept = await ReadJson(await _client.GetAsync($"/games/{id}", Cancellation));
+        var accepted = await ReadJson(await Move(id, 9, 9, 1));
+
+        Assert.Equal(HttpStatusCode.Conflict, rejected.StatusCode);
+        Assert.Equal(1, kept.GetProperty("position").GetInt32());
+        Assert.Equal(3, kept.GetProperty("moves").GetArrayLength());
+        Assert.Equal(2, accepted.GetProperty("position").GetInt32());
+        Assert.Equal(
+            """[{"row":1,"column":1,"digit":5,"deductions":0},{"row":9,"column":9,"digit":1,"deductions":0}]""",
+            accepted.GetProperty("moves").GetRawText());
+    }
+
+    [Fact]
     public async Task A_move_into_contradiction_returns_200_with_the_state_and_later_moves_return_409()
     {
         var id = await CreateGame();
@@ -246,6 +326,9 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
 
     private Task<HttpResponseMessage> Move(string id, int row, int column, int digit) =>
         _client.PutAsJsonAsync($"/games/{id}/cells/{row}/{column}", new { digit }, Cancellation);
+
+    private Task<HttpResponseMessage> SetPosition(string id, int position) =>
+        _client.PutAsJsonAsync($"/games/{id}/position", new { position }, Cancellation);
 
     private static async Task<JsonElement> ReadJson(HttpResponseMessage response)
     {

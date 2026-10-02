@@ -12,6 +12,7 @@ public static class GameEndpoints
         games.MapPost("/", CreateGame);
         games.MapGet("/{id:guid}", GetGame);
         games.MapPut("/{id:guid}/cells/{row:int}/{column:int}", MakeMove);
+        games.MapPut("/{id:guid}/position", SetPosition);
         games.MapGet("/{id:guid}/cells/{row:int}/{column:int}/candidates", GetCandidates);
 
         return app;
@@ -50,6 +51,35 @@ public static class GameEndpoints
         };
     }
 
+    /// <summary>Replays the game to a position from 0 (the empty grid) to the number of moves, keeping every move.</summary>
+    private static Results<Ok<GridResponse>, ValidationProblem, NotFound> SetPosition(
+        Guid id, PositionRequest request, GameStore store)
+    {
+        // Checked under the game's lock, so the range is the one the replay sees.
+        var found = store.TryUse(id, game =>
+        {
+            if (request.Position < 0 || request.Position > game.Moves.Count)
+            {
+                return (GridResponse?)null;
+            }
+
+            game.ReplayTo(request.Position);
+            return GridResponse.From(id, game);
+        }, out var grid);
+
+        if (!found)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return grid is not null
+            ? TypedResults.Ok(grid)
+            : TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["Position"] = ["Position must be between 0 and the number of moves."],
+            });
+    }
+
     private static Results<Ok<IReadOnlyList<int>>, ValidationProblem, NotFound> GetCandidates(
         Guid id, int row, int column, GameStore store)
     {
@@ -72,3 +102,5 @@ public static class GameEndpoints
 }
 
 public sealed record MoveRequest(int Digit);
+
+public sealed record PositionRequest(int Position);
