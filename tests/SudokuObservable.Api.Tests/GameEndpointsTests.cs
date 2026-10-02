@@ -23,6 +23,8 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
         Assert.Equal($"/games/{id}", response.Headers.Location?.OriginalString);
         Assert.Equal("InProgress", grid.GetProperty("state").GetString());
         AssertGridShape(grid);
+        Assert.Equal(0, grid.GetProperty("position").GetInt32());
+        Assert.Empty(grid.GetProperty("moves").EnumerateArray());
     }
 
     [Fact]
@@ -123,6 +125,30 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
         var grid = await ReadJson(response);
         Assert.Equal("Move", CellOf(grid, 1, 8).GetProperty("source").GetString());
         Assert.Equal("Deduction", CellOf(grid, 1, 9).GetProperty("source").GetString());
+    }
+
+    [Fact]
+    public async Task Every_grid_carries_the_position_and_the_moves_with_their_deductions()
+    {
+        var id = await CreateGame();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            await Move(id, 1, digit, digit);
+        }
+
+        var moved = await ReadJson(await Move(id, 1, 8, 8)); // deduces 9 at (1,9)
+        var read = await ReadJson(await _client.GetAsync($"/games/{id}", Cancellation));
+
+        foreach (var grid in new[] { moved, read })
+        {
+            Assert.Equal(8, grid.GetProperty("position").GetInt32());
+            var moves = grid.GetProperty("moves").EnumerateArray().ToList();
+            Assert.Equal(8, moves.Count);
+            Assert.Equal(
+                """{"row":1,"column":8,"digit":8,"deductions":1}""",
+                moves[^1].GetRawText());
+            Assert.Equal(0, moves[0].GetProperty("deductions").GetInt32());
+        }
     }
 
     [Fact]

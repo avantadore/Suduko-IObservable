@@ -20,8 +20,11 @@
 
 @if (_grid is not null)
 {
-    @* Keyed by game, so a new game starts with a fresh board and nothing selected. *@
-    <Board @key="_grid.Id" Grid="_grid" OnPick="Place" />
+    <div class="play">
+        @* Keyed by game, so a new game starts with a fresh board and nothing selected. *@
+        <Board @key="_grid.Id" Grid="_grid" OnPick="Place" />
+        <MoveHistory Grid="_grid" />
+    </div>
 }
 
 @code {

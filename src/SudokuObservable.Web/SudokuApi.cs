@@ -42,9 +42,13 @@ public sealed class SudokuApi(HttpClient http)
     }
 }
 
-public sealed record Grid(Guid Id, GameState State, IReadOnlyList<GridCell> Cells);
+/// <summary>A game's grid, with its position and its whole move history, including any moves after the position.</summary>
+public sealed record Grid(Guid Id, GameState State, IReadOnlyList<GridCell> Cells, int Position, IReadOnlyList<GridMove> Moves);
 
 public sealed record GridCell(int Row, int Column, int? Digit, PlacementSource? Source, IReadOnlyList<int> Candidates);
+
+/// <summary>A move in the game's move history, with how many deductions its cascade made.</summary>
+public sealed record GridMove(int Row, int Column, int Digit, int Deductions);
 
 /// <summary>Mirrors the Core enum of the same name, which the Web project cannot reference.</summary>
 public enum GameState

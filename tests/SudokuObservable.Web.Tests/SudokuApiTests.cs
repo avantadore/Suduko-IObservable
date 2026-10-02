@@ -20,6 +20,17 @@ public class SudokuApiTests
         Assert.Null(grid.Cells[1].Source);
     }
 
+    [Fact]
+    public async Task A_grids_position_and_moves_are_read_including_moves_after_the_position()
+    {
+        var api = ApiReturning(GridJson(state: "InProgress", source: "\"Move\""));
+
+        var grid = await api.NewGameAsync(Cancellation);
+
+        Assert.Equal(1, grid.Position);
+        Assert.Equal([new GridMove(1, 1, 5, 0), new GridMove(4, 7, 2, 3)], grid.Moves);
+    }
+
     [Theory]
     [InlineData("Won", "\"Move\"")]
     [InlineData("1", "\"Move\"")]
@@ -32,7 +43,10 @@ public class SudokuApiTests
         await Assert.ThrowsAsync<JsonException>(() => api.NewGameAsync(Cancellation));
     }
 
-    /// <summary>A grid of two cells: one filled from <paramref name="source"/> (raw JSON), one empty.</summary>
+    /// <summary>
+    /// A grid of two cells: one filled from <paramref name="source"/> (raw JSON), one empty. It is at position 1 of
+    /// two moves, so the second move is kept but not applied.
+    /// </summary>
     private static string GridJson(string state, string source) =>
         $$"""
         {
@@ -41,6 +55,11 @@ public class SudokuApiTests
           "cells": [
             { "row": 1, "column": 1, "digit": 5, "source": {{source}}, "candidates": [5] },
             { "row": 1, "column": 2, "digit": null, "source": null, "candidates": [1, 2] }
+          ],
+          "position": 1,
+          "moves": [
+            { "row": 1, "column": 1, "digit": 5, "deductions": 0 },
+            { "row": 4, "column": 7, "digit": 2, "deductions": 3 }
           ]
         }
         """;

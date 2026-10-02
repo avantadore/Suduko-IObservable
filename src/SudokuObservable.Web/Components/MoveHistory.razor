@@ -1,0 +1,20 @@
+<section class="history" aria-label="Move history">
+    <h2>Moves</h2>
+    <ol>
+        @foreach (var row in HistoryDisplay.Rows(Grid.Position, Grid.Moves))
+        {
+            <li class="@row.State.CssClass()" aria-current="@(row.State == HistoryRowState.Current ? "step" : null)">
+                @row.Text
+                @if (row.Deductions is not null)
+                {
+                    <span class="deductions" title="@row.DeductionsTooltip">@row.Deductions</span>
+                }
+            </li>
+        }
+    </ol>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public required Grid Grid { get; set; }
+}
