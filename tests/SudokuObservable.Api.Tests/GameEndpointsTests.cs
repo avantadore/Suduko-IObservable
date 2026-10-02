@@ -248,7 +248,39 @@ public class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClass
         Assert.Equal("Contradicted", (await ReadJson(contradicting)).GetProperty("state").GetString());
         Assert.Equal(HttpStatusCode.Conflict, later.StatusCode);
         var problem = await AssertProblemDetails(later);
-        Assert.Contains("contradiction", problem.GetProperty("detail").GetString());
+        Assert.Equal(ContradictedReason(), problem.GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task Setting_the_position_to_before_the_move_into_contradiction_lets_the_game_accept_moves_again()
+    {
+        var id = await CreateGame();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            await Move(id, 1, digit, digit);
+        }
+
+        await Move(id, 2, 7, 9); // leaves 9 with no place in row 1
+
+        var replayed = await ReadJson(await SetPosition(id, 7));
+        var moved = await Move(id, 1, 8, 9);
+
+        Assert.Equal("InProgress", replayed.GetProperty("state").GetString());
+        Assert.Equal(HttpStatusCode.OK, moved.StatusCode);
+        Assert.Equal(9, CellOf(await ReadJson(moved), 1, 8).GetProperty("digit").GetInt32());
+    }
+
+    /// <summary>The reason Core itself gives for rejecting a move in a contradicted game.</summary>
+    private static string ContradictedReason()
+    {
+        var game = Core.Game.New();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            game.Move(1, digit, digit);
+        }
+
+        game.Move(2, 7, 9);
+        return Assert.IsType<Core.MoveOutcome.Rejected>(game.Move(5, 5, 5)).Reason;
     }
 
     [Fact]

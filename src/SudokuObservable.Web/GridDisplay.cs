@@ -15,7 +15,7 @@ public static class GridDisplay
     {
         GameState.InProgress => "In progress",
         GameState.Solved => "Solved!",
-        GameState.Contradicted => "Contradicted: this grid can no longer be solved. Start a new game.",
+        GameState.Contradicted => "Contradicted: this grid can no longer be solved. Replay to an earlier move to continue.",
         _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
     };
 

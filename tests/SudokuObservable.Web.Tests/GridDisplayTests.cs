@@ -6,7 +6,7 @@ public class GridDisplayTests
     [Theory]
     [InlineData(GameState.InProgress, "in-progress", "In progress")]
     [InlineData(GameState.Solved, "solved", "Solved!")]
-    [InlineData(GameState.Contradicted, "contradicted", "Contradicted: this grid can no longer be solved. Start a new game.")]
+    [InlineData(GameState.Contradicted, "contradicted", "Contradicted: this grid can no longer be solved. Replay to an earlier move to continue.")]
     public void A_game_state_is_shown_with_its_class_and_label(GameState state, string cssClass, string label)
     {
         Assert.Equal(cssClass, state.CssClass());

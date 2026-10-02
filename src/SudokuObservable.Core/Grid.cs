@@ -75,7 +75,7 @@ internal sealed class Grid
         if (_steps.IsContradicted)
         {
             return new MoveOutcome.Rejected(
-                "The game is in contradiction, so no more moves can be made. Start a new game.");
+                "The game is in contradiction, so no more moves can be made. Replay to an earlier position to continue, or start a new game.");
         }
 
         if (cell.Digit == digit)

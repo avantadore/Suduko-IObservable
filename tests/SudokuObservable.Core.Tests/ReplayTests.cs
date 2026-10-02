@@ -142,6 +142,42 @@ public class ReplayTests
         Assert.DoesNotContain(steps, step => step is Step.Placement { Digit: not 1 });
     }
 
+    [Fact]
+    public void Replaying_to_before_the_move_into_contradiction_makes_the_game_playable_again()
+    {
+        var game = Game.New();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            game.Move(1, digit, digit);
+        }
+
+        game.Move(2, 7, 9); // leaves 9 with no place in row 1
+
+        game.ReplayTo(game.Moves.Count);
+        Assert.Equal(GameState.Contradicted, game.State);
+
+        game.ReplayTo(game.Moves.Count - 1);
+
+        Assert.Equal(GameState.InProgress, game.State);
+        Assert.IsType<MoveOutcome.Accepted>(game.Move(1, 8, 9));
+    }
+
+    [Fact]
+    public void A_move_in_a_contradicted_game_is_rejected_with_a_reason_that_points_to_replaying()
+    {
+        var game = Game.New();
+        for (var digit = 1; digit <= 7; digit++)
+        {
+            game.Move(1, digit, digit);
+        }
+
+        game.Move(2, 7, 9);
+
+        var rejected = Assert.IsType<MoveOutcome.Rejected>(game.Move(5, 5, 5));
+
+        Assert.Contains("replay to an earlier position", rejected.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static List<Step> Record(Game game)
     {
         var steps = new List<Step>();
